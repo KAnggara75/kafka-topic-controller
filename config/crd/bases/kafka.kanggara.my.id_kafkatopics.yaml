@@ -102,10 +102,7 @@ spec:
                       - Unknown
                       type: string
                     type:
-                      description: |
-                        type of the condition in CamelCase or in foo.kafka.kanggara.my.id/CamelCase.
-                        --- Many .condition.type values are standardized, for example:
-                        Available, Progressing, and Degraded. See https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#standard-condition-types-and-reasons
+                      description: "type of the condition in CamelCase or in foo.kafka.kanggara.my.id/CamelCase. --- Many .condition.type values are standardized, for example: Available, Progressing, and Degraded. See https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#standard-condition-types-and-reasons"
                       maxLength: 316
                       pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*\/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
                       type: string

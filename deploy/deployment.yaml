@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-topic-controller
+  namespace: default
+  labels:
+    app: kafka-topic-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka-topic-controller
+  template:
+    metadata:
+      labels:
+        app: kafka-topic-controller
+    spec:
+      serviceAccountName: kafka-topic-controller
+      containers:
+      - name: controller
+        image: kanggara75/kafka-topic-controller:latest
+        imagePullPolicy: Always
+        env:
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          value: "kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi

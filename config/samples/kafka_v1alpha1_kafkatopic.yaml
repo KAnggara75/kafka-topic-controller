@@ -1,0 +1,13 @@
+apiVersion: kafka.kanggara.my.id/v1alpha1
+kind: KafkaTopic
+metadata:
+  name: ps-withdrawal-corporate-claim-checking-dev-v2
+spec:
+  partitions: 2
+  replicationFactor: 2
+  retentionMinutes: 120
+  settings:
+    cleanup.policy: delete
+    min.insync.replicas: "1"
+    retention.bytes: "7200000"
+    max.message.bytes: "52428800"

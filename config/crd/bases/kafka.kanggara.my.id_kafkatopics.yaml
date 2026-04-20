@@ -82,7 +82,7 @@ spec:
                         state of the instance.
                       format: int64
                       minimum: 0
-                      type: string
+                      type: integer
                     reason:
                       description: reason contains a programmatic identifier indicating
                         the reason for the condition's last transition. Producers

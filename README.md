@@ -26,10 +26,7 @@ kubectl apply -f https://raw.githubusercontent.com/KAnggara75/kafka-topic-contro
 ### 2. Deploy Controller
 Jalankan semua manifest deployment dalam satu perintah:
 ```bash
-kubectl apply -f https://raw.githubusercontent.com/KAnggara75/kafka-topic-controller/main/deploy/service_account.yaml \
--f https://raw.githubusercontent.com/KAnggara75/kafka-topic-controller/main/deploy/role.yaml \
--f https://raw.githubusercontent.com/KAnggara75/kafka-topic-controller/main/deploy/role_binding.yaml \
--f https://raw.githubusercontent.com/KAnggara75/kafka-topic-controller/main/deploy/deployment.yaml
+kubectl apply -f https://raw.githubusercontent.com/KAnggara75/kafka-topic-controller/main/deploy/install.yaml
 ```
 
 > **Peringatan**: Perintah di atas menggunakan branch `main`. Pastikan file sudah dimerge ke branch `main` sebelum menjalankan perintah ini.

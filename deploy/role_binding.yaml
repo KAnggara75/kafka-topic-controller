@@ -9,4 +9,4 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: kafka-topic-controller
-  namespace: default
+  namespace: kafka

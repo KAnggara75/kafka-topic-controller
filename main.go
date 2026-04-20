@@ -62,8 +62,6 @@ func main() {
 	var kafkaBootstrapServers string
 
 	var kafkaSASLMechanism string
-	var kafkaSASLUser string
-	var kafkaSASLPassword string
 	var kafkaTLSEnabled bool
 	var kafkaTLSSkipVerify bool
 

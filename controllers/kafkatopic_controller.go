@@ -16,7 +16,7 @@ import (
 	kafkav1alpha1 "github.com/KAnggara75/kafka-topic-controller/api/v1alpha1"
 )
 
-const kafkaTopicFinalizer = "kafkatopic.topicctl.example.com/finalizer"
+const kafkaTopicFinalizer = "kafkatopic.topicctl.kafka.kanggara.my.id/finalizer"
 
 // KafkaTopicReconciler reconciles a KafkaTopic object
 type KafkaTopicReconciler struct {

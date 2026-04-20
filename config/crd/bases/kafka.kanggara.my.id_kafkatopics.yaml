@@ -3,9 +3,9 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.14.0
-  name: kafkatopics.kafka.example.com
+  name: kafkatopics.kafka.kanggara.my.id
 spec:
-  group: kafka.example.com
+  group: kafka.kanggara.my.id
   names:
     kind: KafkaTopic
     listKind: KafkaTopicList
@@ -102,7 +102,7 @@ spec:
                       - Unknown
                       type: string
                     type:
-                      description: type of the condition in CamelCase or in foo.example.com/CamelCase.
+                      description: type of the condition in CamelCase or in foo.kafka.kanggara.my.id/CamelCase.
                         --- Many .condition.type values are standardized, for example:
                         Available, Progressing, and Degraded. See https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#standard-condition-types-and-reasons
                       maxLength: 316

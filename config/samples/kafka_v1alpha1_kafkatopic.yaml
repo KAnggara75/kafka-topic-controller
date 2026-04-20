@@ -1,4 +1,4 @@
-apiVersion: kafka.example.com/v1alpha1
+apiVersion: kafka.kanggara.my.id/v1alpha1
 kind: KafkaTopic
 metadata:
   name: ps-withdrawal-corporate-claim-checking-dev-v2

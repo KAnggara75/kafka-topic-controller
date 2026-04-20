@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"context"
-	"time"
 
 	"github.com/segmentio/topicctl/pkg/admin"
 	"github.com/segmentio/topicctl/pkg/apply"
@@ -70,7 +69,7 @@ func (r *KafkaTopicReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	l.Info("Syncing Kafka topic", "name", kafkaTopic.Name)
 	if err := r.syncKafkaTopic(ctx, &kafkaTopic); err != nil {
 		l.Error(err, "Failed to sync kafka topic")
-		return ctrl.Result{RequeueAfter: 30 * time.Second}, err
+		return ctrl.Result{}, err
 	}
 
 	return ctrl.Result{}, nil

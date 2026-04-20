@@ -33,11 +33,21 @@ func main() {
 	var probeAddr string
 	var kafkaBootstrapServers string
 
+	var kafkaSASLMechanism string
+	var kafkaSASLUser string
+	var kafkaSASLPassword string
+	var kafkaTLSEnabled bool
+	var kafkaTLSSkipVerify bool
+
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
-	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
-		"Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
+	flag.BoolVar(&enableLeaderElection, "leader-elect", false, "Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
 	flag.StringVar(&kafkaBootstrapServers, "kafka-bootstrap-servers", os.Getenv("KAFKA_BOOTSTRAP_SERVERS"), "Kafka bootstrap servers")
+	flag.StringVar(&kafkaSASLMechanism, "kafka-sasl-mechanism", os.Getenv("KAFKA_SASL_MECHANISM"), "Kafka SASL mechanism (PLAIN, SCRAM-SHA-256, SCRAM-SHA-512)")
+	flag.StringVar(&kafkaSASLUser, "kafka-sasl-user", os.Getenv("KAFKA_SASL_USER"), "Kafka SASL user")
+	flag.StringVar(&kafkaSASLPassword, "kafka-sasl-password", os.Getenv("KAFKA_SASL_PASSWORD"), "Kafka SASL password")
+	flag.BoolVar(&kafkaTLSEnabled, "kafka-tls-enabled", os.Getenv("KAFKA_TLS_ENABLED") == "true", "Enable Kafka TLS")
+	flag.BoolVar(&kafkaTLSSkipVerify, "kafka-tls-skip-verify", os.Getenv("KAFKA_TLS_SKIP_VERIFY") == "true", "Skip Kafka TLS verification")
 
 	opts := zap.Options{
 		Development: true,
@@ -68,6 +78,11 @@ func main() {
 		Client:           mgr.GetClient(),
 		Scheme:           mgr.GetScheme(),
 		BootstrapServers: kafkaBootstrapServers,
+		SASLMechanism:    kafkaSASLMechanism,
+		SASLUser:         kafkaSASLUser,
+		SASLPassword:     kafkaSASLPassword,
+		TLSEnabled:       kafkaTLSEnabled,
+		TLSSkipVerify:    kafkaTLSSkipVerify,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "KafkaTopic")
 		os.Exit(1)

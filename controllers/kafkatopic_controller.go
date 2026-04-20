@@ -23,6 +23,11 @@ type KafkaTopicReconciler struct {
 	client.Client
 	Scheme           *runtime.Scheme
 	BootstrapServers string
+	SASLMechanism    string
+	SASLUser         string
+	SASLPassword     string
+	TLSEnabled       bool
+	TLSSkipVerify    bool
 }
 
 //+kubebuilder:rbac:groups=kafka.kanggara.my.id,resources=kafkatopics,verbs=get;list;watch;create;update;patch;delete
@@ -75,6 +80,15 @@ func (r *KafkaTopicReconciler) deleteKafkaTopic(ctx context.Context, kt *kafkav1
 	adminClient, err := admin.NewBrokerAdminClient(ctx, admin.BrokerAdminClientConfig{
 		ConnectorConfig: admin.ConnectorConfig{
 			BrokerAddr: r.BootstrapServers,
+			SASL: config.SASLConfig{
+				Mechanism: r.SASLMechanism,
+				User:      r.SASLUser,
+				Password:  r.SASLPassword,
+			},
+			TLS: config.TLSConfig{
+				Enabled:    r.TLSEnabled,
+				SkipVerify: r.TLSSkipVerify,
+			},
 		},
 	})
 	if err != nil {
@@ -89,6 +103,15 @@ func (r *KafkaTopicReconciler) syncKafkaTopic(ctx context.Context, kt *kafkav1al
 	adminClient, err := admin.NewBrokerAdminClient(ctx, admin.BrokerAdminClientConfig{
 		ConnectorConfig: admin.ConnectorConfig{
 			BrokerAddr: r.BootstrapServers,
+			SASL: config.SASLConfig{
+				Mechanism: r.SASLMechanism,
+				User:      r.SASLUser,
+				Password:  r.SASLPassword,
+			},
+			TLS: config.TLSConfig{
+				Enabled:    r.TLSEnabled,
+				SkipVerify: r.TLSSkipVerify,
+			},
 		},
 	})
 	if err != nil {

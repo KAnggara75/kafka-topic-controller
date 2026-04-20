@@ -81,6 +81,16 @@ spec:
         env:
         - name: KAFKA_BOOTSTRAP_SERVERS
           value: "kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
+        - name: KAFKA_SASL_MECHANISM
+          value: "PLAIN"
+        - name: KAFKA_SASL_USER
+          value: "my-user"
+        - name: KAFKA_SASL_PASSWORD
+          value: "my-password"
+        - name: KAFKA_TLS_ENABLED
+          value: "true"
+        - name: KAFKA_TLS_SKIP_VERIFY
+          value: "false"
         livenessProbe:
           httpGet:
             path: /healthz

@@ -38,6 +38,18 @@ export KAFKA_BOOTSTRAP_SERVERS="localhost:9092"
 go run main.go
 ```
 
+### Konfigurasi SASL/SSL
+
+Jika cluster Kafka Anda menggunakan autentikasi SASL dan enkripsi SSL (SASL_SSL), Anda dapat mengonfigurasinya melalui variabel lingkungan berikut di `deploy/install.yaml`:
+
+| Nama Variabel | Deskripsi | Contoh |
+|---------------|-----------|--------|
+| `KAFKA_SASL_MECHANISM` | Mekanisme SASL (`PLAIN`, `SCRAM-SHA-256`, `SCRAM-SHA-512`). | `PLAIN` |
+| `KAFKA_SASL_USER` | Username Kafka. | `my-user` |
+| `KAFKA_SASL_PASSWORD` | Password Kafka. | `my-password` |
+| `KAFKA_TLS_ENABLED` | Set ke `true` untuk mengaktifkan TLS. | `true` |
+| `KAFKA_TLS_SKIP_VERIFY` | Set ke `true` jika menggunakan self-signed cert. | `false` |
+
 ## Cara Penggunaan
 
 Buat file manifest `kafkatopic.yaml`:

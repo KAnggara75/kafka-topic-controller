@@ -2,6 +2,10 @@
 
 Kubernetes Controller untuk mengelola topik Kafka secara deklaratif melalui Custom Resource Definitions (CRD). Controller ini memungkinkan integrasi manajemen topik Kafka ke dalam alur kerja GitOps (seperti ArgoCD).
 
+## Status Proyek
+
+- **Code Coverage**: 10.1% (Target: 10%)
+
 ## Fitur
 
 - **Deklaratif**: Definisikan topik Kafka dalam format YAML.

@@ -42,13 +42,13 @@ jobs:
           echo "Total coverage: $COVERAGE"
           # Enforce 75% threshold (remove % for comparison)
           COV_VAL=$(echo $COVERAGE | sed 's/%//')
-          awk -v cov="$COV_VAL" 'BEGIN { if (cov < 5) { print "Coverage too low: " cov " < 5"; exit 1 } }'
+          awk -v cov="$COV_VAL" 'BEGIN { if (cov < 10) { print "Coverage too low: " cov " < 10"; exit 1 } }'
 
       - name: Update Coverage in README
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           COVERAGE=$(go tool cover -func=coverage.out | grep total: | awk '{print $3}')
-          sed -i "s/- \*\*Code Coverage\*\*: .*/- \*\*Code Coverage\*\*: $COVERAGE (Target: 75%)/" README.md
+          sed -i "s/- \*\*Code Coverage\*\*: .*/- \*\*Code Coverage\*\*: $COVERAGE (Target: 10%)/" README.md
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add README.md

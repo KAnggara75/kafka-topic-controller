@@ -80,12 +80,12 @@ func (r *KafkaTopicReconciler) deleteKafkaTopic(ctx context.Context, kt *kafkav1
 	adminClient, err := admin.NewBrokerAdminClient(ctx, admin.BrokerAdminClientConfig{
 		ConnectorConfig: admin.ConnectorConfig{
 			BrokerAddr: r.BootstrapServers,
-			SASL: config.SASLConfig{
-				Mechanism: r.SASLMechanism,
-				User:      r.SASLUser,
+			SASL: admin.SASLConfig{
+				Mechanism: admin.SASLMechanism(r.SASLMechanism),
+				Username:  r.SASLUser,
 				Password:  r.SASLPassword,
 			},
-			TLS: config.TLSConfig{
+			TLS: admin.TLSConfig{
 				Enabled:    r.TLSEnabled,
 				SkipVerify: r.TLSSkipVerify,
 			},
@@ -103,12 +103,12 @@ func (r *KafkaTopicReconciler) syncKafkaTopic(ctx context.Context, kt *kafkav1al
 	adminClient, err := admin.NewBrokerAdminClient(ctx, admin.BrokerAdminClientConfig{
 		ConnectorConfig: admin.ConnectorConfig{
 			BrokerAddr: r.BootstrapServers,
-			SASL: config.SASLConfig{
-				Mechanism: r.SASLMechanism,
-				User:      r.SASLUser,
+			SASL: admin.SASLConfig{
+				Mechanism: admin.SASLMechanism(r.SASLMechanism),
+				Username:  r.SASLUser,
 				Password:  r.SASLPassword,
 			},
-			TLS: config.TLSConfig{
+			TLS: admin.TLSConfig{
 				Enabled:    r.TLSEnabled,
 				SkipVerify: r.TLSSkipVerify,
 			},

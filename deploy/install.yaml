@@ -76,7 +76,7 @@ spec:
       serviceAccountName: kafka-topic-controller
       containers:
       - name: controller
-        image: kanggara75/kafka-topic-controller:latest
+        image: ghcr.io/kanggara75/kafka-topic-controller:latest
         imagePullPolicy: Always
         env:
         - name: KAFKA_BOOTSTRAPSERVERS

@@ -12,6 +12,7 @@ repos:
         stages: [pre-commit]
 
       - id: check-yaml
+        args: [--allow-multiple-documents]
         stages: [pre-commit]
 
       - id: check-added-large-files

@@ -79,18 +79,24 @@ spec:
         image: kanggara75/kafka-topic-controller:latest
         imagePullPolicy: Always
         env:
-        - name: KAFKA_BOOTSTRAP_SERVERS
-          value: "kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
-        - name: KAFKA_SASL_MECHANISM
+        - name: KAFKA_BOOTSTRAPSERVERS
+          value: "kafka.pakaiwa.my.id:29092"
+        - name: KAFKA_PROPERTIES_SASL_MECHANISM
           value: "PLAIN"
-        - name: KAFKA_SASL_USER
-          value: "my-user"
-        - name: KAFKA_SASL_PASSWORD
-          value: "my-password"
-        - name: KAFKA_TLS_ENABLED
-          value: "true"
-        - name: KAFKA_TLS_SKIP_VERIFY
-          value: "false"
+        - name: KAFKA_PROPERTIES_SECURITY_PROTOCOL
+          value: "SASL_SSL"
+        - name: KAFKA_PROPERTIES_SASL_JAAS_CONFIG
+          valueFrom:
+            secretKeyRef:
+              name: kasecrets
+              key: root_password
+        - name: KAFKA_PROPERTIES_SSL_TRUSTSTORE_LOCATION
+          value: "/opt/truststore.jks"
+        - name: KAFKA_PROPERTIES_SSL_TRUSTSTORE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: kasecrets
+              key: root_password
         livenessProbe:
           httpGet:
             path: /healthz

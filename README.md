@@ -38,17 +38,17 @@ export KAFKA_BOOTSTRAP_SERVERS="localhost:9092"
 go run main.go
 ```
 
-### Konfigurasi SASL/SSL
+### Konfigurasi Kafka
 
-Jika cluster Kafka Anda menggunakan autentikasi SASL dan enkripsi SSL (SASL_SSL), Anda dapat mengonfigurasinya melalui variabel lingkungan berikut di `deploy/install.yaml`:
+Controller ini mendukung berbagai format variabel lingkungan untuk memudahkan integrasi:
 
-| Nama Variabel | Deskripsi | Contoh |
-|---------------|-----------|--------|
-| `KAFKA_SASL_MECHANISM` | Mekanisme SASL (`PLAIN`, `SCRAM-SHA-256`, `SCRAM-SHA-512`). | `PLAIN` |
-| `KAFKA_SASL_USER` | Username Kafka. | `my-user` |
-| `KAFKA_SASL_PASSWORD` | Password Kafka. | `my-password` |
-| `KAFKA_TLS_ENABLED` | Set ke `true` untuk mengaktifkan TLS. | `true` |
-| `KAFKA_TLS_SKIP_VERIFY` | Set ke `true` jika menggunakan self-signed cert. | `false` |
+| Nama Variabel | Alternatif (Support JAAS) | Deskripsi |
+|---------------|---------------------------|-----------|
+| `KAFKA_BOOTSTRAP_SERVERS` | `KAFKA_BOOTSTRAPSERVERS` | Alamat broker Kafka. |
+| `KAFKA_SASL_MECHANISM` | `KAFKA_PROPERTIES_SASL_MECHANISM` | Mekanisme SASL (`PLAIN`, `SCRAM-SHA-256`, dll). |
+| `KAFKA_SECURITY_PROTOCOL` | `KAFKA_PROPERTIES_SECURITY_PROTOCOL` | Set ke `SASL_SSL` untuk mengaktifkan TLS secara otomatis. |
+| `KAFKA_SASL_JAAS_CONFIG` | `KAFKA_PROPERTIES_SASL_JAAS_CONFIG` | String JAAS (Username/Password akan diekstrak otomatis). |
+| `KAFKA_TLS_ENABLED` | `KAFKA_PROPERTIES_TLS_ENABLED` | Set ke `true` untuk mengaktifkan TLS. |
 
 ## Cara Penggunaan
 

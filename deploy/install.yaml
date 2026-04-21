@@ -113,6 +113,7 @@ spec:
         - name: truststore
           mountPath: /opt/truststore.jks
           subPath: truststore.jks
+          readOnly: true
         resources:
           limits:
             cpu: 500m

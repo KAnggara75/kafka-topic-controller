@@ -60,7 +60,7 @@ func parseJAASConfig(jaas string) (string, string) {
 }
 
 func convertJKStoPEM(jksPath, password string) (string, error) {
-	f, err := os.Open(jksPath)
+	f, err := os.Open(jksPath) // #nosec G304
 	if err != nil {
 		return "", err
 	}

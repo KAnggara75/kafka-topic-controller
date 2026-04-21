@@ -3,6 +3,7 @@ module github.com/KAnggara75/kafka-topic-controller
 go 1.26.2
 
 require (
+	github.com/pavlo-v-chernykh/keystore-go/v4 v4.5.0
 	github.com/segmentio/topicctl v1.23.1
 	k8s.io/apimachinery v0.29.2
 	k8s.io/client-go v0.29.0

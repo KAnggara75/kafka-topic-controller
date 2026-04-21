@@ -27,6 +27,7 @@ type KafkaTopicReconciler struct {
 	SASLPassword     string
 	TLSEnabled       bool
 	TLSSkipVerify    bool
+	TLSCACertPath    string
 }
 
 //+kubebuilder:rbac:groups=kafka.kanggara.my.id,resources=kafkatopics,verbs=get;list;watch;create;update;patch;delete
@@ -87,6 +88,7 @@ func (r *KafkaTopicReconciler) deleteKafkaTopic(ctx context.Context, kt *kafkav1
 			TLS: admin.TLSConfig{
 				Enabled:    r.TLSEnabled,
 				SkipVerify: r.TLSSkipVerify,
+				CACertPath: r.TLSCACertPath,
 			},
 		},
 	})
@@ -110,6 +112,7 @@ func (r *KafkaTopicReconciler) syncKafkaTopic(ctx context.Context, kt *kafkav1al
 			TLS: admin.TLSConfig{
 				Enabled:    r.TLSEnabled,
 				SkipVerify: r.TLSSkipVerify,
+				CACertPath: r.TLSCACertPath,
 			},
 		},
 	})

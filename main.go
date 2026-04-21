@@ -6,6 +6,10 @@ import (
 	"regexp"
 	"strings"
 
+	"encoding/pem"
+
+	"github.com/pavlo-v-chernykh/keystore-go/v4"
+
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -55,6 +59,45 @@ func parseJAASConfig(jaas string) (string, string) {
 	return user, pass
 }
 
+func convertJKStoPEM(jksPath, password string) (string, error) {
+	f, err := os.Open(jksPath)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	ks := keystore.New()
+	if err := ks.Load(f, []byte(password)); err != nil {
+		return "", err
+	}
+
+	tempFile, err := os.CreateTemp("", "kafka-ca-*.pem")
+	if err != nil {
+		return "", err
+	}
+	defer tempFile.Close()
+
+	for _, alias := range ks.Aliases() {
+		if ks.IsTrustedCertificateEntry(alias) {
+			entry, _ := ks.GetTrustedCertificateEntry(alias)
+			pem.Encode(tempFile, &pem.Block{
+				Type:  "CERTIFICATE",
+				Bytes: entry.Certificate.Content,
+			})
+		} else if ks.IsPrivateKeyEntry(alias) {
+			entry, _ := ks.GetPrivateKeyEntry(alias, []byte(password))
+			for _, cert := range entry.CertificateChain {
+				pem.Encode(tempFile, &pem.Block{
+					Type:  "CERTIFICATE",
+					Bytes: cert.Content,
+				})
+			}
+		}
+	}
+
+	return tempFile.Name(), nil
+}
+
 func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
@@ -70,12 +113,25 @@ func main() {
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false, "Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
 
 	// Support both standard and user-specific env var names
-	bootstrap := getEnv("KAFKA_BOOTSTRAP_SERVERS", "KAFKA_BOOTSTRAPSERVERS")
-	mechanism := getEnv("KAFKA_SASL_MECHANISM", "KAFKA_PROPERTIES_SASL_MECHANISM")
-	securityProtocol := getEnv("KAFKA_SECURITY_PROTOCOL", "KAFKA_PROPERTIES_SECURITY_PROTOCOL")
-	jaasConfig := getEnv("KAFKA_SASL_JAAS_CONFIG", "KAFKA_PROPERTIES_SASL_JAAS_CONFIG")
+	bootstrap := getEnv("KAFKA_BOOTSTRAP_SERVERS", "KAFKA_BOOTSTRAPSERVERS", "BOOTSTRAP_SERVER")
+	mechanism := getEnv("KAFKA_SASL_MECHANISM", "KAFKA_PROPERTIES_SASL_MECHANISM", "SASL_MECHANISM")
+	securityProtocol := getEnv("KAFKA_SECURITY_PROTOCOL", "KAFKA_PROPERTIES_SECURITY_PROTOCOL", "SECURITY_PROTOCOL")
+	jaasConfig := getEnv("KAFKA_SASL_JAAS_CONFIG", "KAFKA_PROPERTIES_SASL_JAAS_CONFIG", "SASL_JAAS_CONFIG")
 	tlsEnabledEnv := getEnv("KAFKA_TLS_ENABLED", "KAFKA_PROPERTIES_TLS_ENABLED")
 	tlsSkipVerifyEnv := getEnv("KAFKA_TLS_SKIP_VERIFY", "KAFKA_PROPERTIES_TLS_SKIP_VERIFY")
+	caCertPath := getEnv("KAFKA_CA_CERT_PATH", "SSL_TRUSTSTORE_LOCATION")
+	caCertPassword := getEnv("SSL_TRUSTSTORE_PASSWORD", "KAFKA_CA_CERT_PASSWORD")
+
+	if caCertPath != "" && strings.HasSuffix(caCertPath, ".jks") {
+		setupLog.Info("Converting JKS truststore to PEM", "path", caCertPath)
+		pemPath, err := convertJKStoPEM(caCertPath, caCertPassword)
+		if err != nil {
+			setupLog.Error(err, "Failed to convert JKS to PEM")
+		} else {
+			caCertPath = pemPath
+			setupLog.Info("JKS converted to PEM", "pemPath", pemPath)
+		}
+	}
 
 	// Special handling for SASL_SSL protocol
 	tlsEnabled := tlsEnabledEnv == "true" || strings.Contains(securityProtocol, "SSL")
@@ -129,6 +185,7 @@ func main() {
 		SASLPassword:     kafkaSASLPassword,
 		TLSEnabled:       kafkaTLSEnabled,
 		TLSSkipVerify:    kafkaTLSSkipVerify,
+		TLSCACertPath:    caCertPath,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "KafkaTopic")
 		os.Exit(1)

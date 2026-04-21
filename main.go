@@ -61,7 +61,9 @@ func convertJKStoPEM(jksPath, password string) (string, error) {
 	if _, err := f.Read(magic); err != nil {
 		return "", err
 	}
-	f.Seek(0, 0)
+	if _, err := f.Seek(0, 0); err != nil {
+		return "", err
+	}
 	if magic[0] != 0xFE || magic[1] != 0xED || magic[2] != 0xFE || magic[3] != 0xED {
 		setupLog.Info("Warning: File does not have JKS magic bytes (0xFEEDFEED)", "magic", magic)
 	}

@@ -144,7 +144,7 @@ func main() {
 	jaasConfig := os.Getenv("SASL_JAAS_CONFIG")
 	tlsEnabledEnv := os.Getenv("KAFKA_TLS_ENABLED")
 	tlsSkipVerifyEnv := os.Getenv("KAFKA_TLS_SKIP_VERIFY")
-	caCertPath := os.Getenv("SSL_TRUSTSTORE_LOCATION")
+	caCertPath := strings.TrimSpace(os.Getenv("SSL_TRUSTSTORE_LOCATION"))
 	caCertPassword := strings.TrimSpace(os.Getenv("SSL_TRUSTSTORE_PASSWORD"))
 
 	if caCertPath != "" && strings.HasSuffix(caCertPath, ".jks") {

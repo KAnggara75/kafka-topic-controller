@@ -79,7 +79,7 @@ spec:
         image: ghcr.io/kanggara75/kafka-topic-controller:latest
         imagePullPolicy: Always
         env:
-        - name: BOOTSTRAP_SERVER
+        - name: KAFKA_BOOTSTRAP_SERVERS
           value: kafka.pakaiwa.my.id:29092
         - name: SASL_MECHANISM
           value: PLAIN

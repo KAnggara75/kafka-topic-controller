@@ -33,15 +33,6 @@ func init() {
 	utilruntime.Must(kafkav1alpha1.AddToScheme(scheme))
 }
 
-func getEnv(keys ...string) string {
-	for _, key := range keys {
-		if val := os.Getenv(key); val != "" {
-			return val
-		}
-	}
-	return ""
-}
-
 func parseJAASConfig(jaas string) (string, string) {
 	usernameRegex := regexp.MustCompile(`username="([^"]+)"`)
 	passwordRegex := regexp.MustCompile(`password="([^"]+)"`)
@@ -123,14 +114,14 @@ func main() {
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false, "Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
 
 	// Support both standard and user-specific env var names
-	bootstrap := getEnv("KAFKA_BOOTSTRAP_SERVERS", "KAFKA_BOOTSTRAPSERVERS", "BOOTSTRAP_SERVER")
-	mechanism := getEnv("KAFKA_SASL_MECHANISM", "KAFKA_PROPERTIES_SASL_MECHANISM", "SASL_MECHANISM")
-	securityProtocol := getEnv("KAFKA_SECURITY_PROTOCOL", "KAFKA_PROPERTIES_SECURITY_PROTOCOL", "SECURITY_PROTOCOL")
-	jaasConfig := getEnv("KAFKA_SASL_JAAS_CONFIG", "KAFKA_PROPERTIES_SASL_JAAS_CONFIG", "SASL_JAAS_CONFIG")
-	tlsEnabledEnv := getEnv("KAFKA_TLS_ENABLED", "KAFKA_PROPERTIES_TLS_ENABLED")
-	tlsSkipVerifyEnv := getEnv("KAFKA_TLS_SKIP_VERIFY", "KAFKA_PROPERTIES_TLS_SKIP_VERIFY")
-	caCertPath := getEnv("KAFKA_CA_CERT_PATH", "SSL_TRUSTSTORE_LOCATION")
-	caCertPassword := getEnv("SSL_TRUSTSTORE_PASSWORD", "KAFKA_CA_CERT_PASSWORD")
+	bootstrap := os.Getenv("KAFKA_BOOTSTRAP_SERVERS")
+	mechanism := os.Getenv("SASL_MECHANISM")
+	securityProtocol := os.Getenv("SECURITY_PROTOCOL")
+	jaasConfig := os.Getenv("SASL_JAAS_CONFIG")
+	tlsEnabledEnv := os.Getenv("KAFKA_TLS_ENABLED")
+	tlsSkipVerifyEnv := os.Getenv("KAFKA_TLS_SKIP_VERIFY")
+	caCertPath := os.Getenv("SSL_TRUSTSTORE_LOCATION")
+	caCertPassword := os.Getenv("SSL_TRUSTSTORE_PASSWORD")
 
 	if caCertPath != "" && strings.HasSuffix(caCertPath, ".jks") {
 		setupLog.Info("Converting JKS truststore to PEM", "path", caCertPath)

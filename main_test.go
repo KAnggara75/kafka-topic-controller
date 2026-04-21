@@ -1,44 +1,8 @@
 package main
 
 import (
-	"os"
 	"testing"
 )
-
-func TestGetEnv(t *testing.T) {
-	os.Setenv("TEST_KAFKA_1", "val1")
-	defer os.Unsetenv("TEST_KAFKA_1")
-
-	tests := []struct {
-		name     string
-		keys     []string
-		expected string
-	}{
-		{
-			name:     "First key exists",
-			keys:     []string{"TEST_KAFKA_1", "TEST_KAFKA_2"},
-			expected: "val1",
-		},
-		{
-			name:     "Second key exists",
-			keys:     []string{"TEST_KAFKA_NONEXISTENT", "TEST_KAFKA_1"},
-			expected: "val1",
-		},
-		{
-			name:     "No keys exist",
-			keys:     []string{"NONEXISTENT1", "NONEXISTENT2"},
-			expected: "",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := getEnv(tt.keys...); got != tt.expected {
-				t.Errorf("getEnv() = %v, want %v", got, tt.expected)
-			}
-		})
-	}
-}
 
 func TestParseJAASConfig(t *testing.T) {
 	tests := []struct {

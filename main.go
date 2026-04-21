@@ -80,7 +80,7 @@ func convertJKStoPEM(jksPath, password string) (string, error) {
 				Type:  "CERTIFICATE",
 				Bytes: entry.Certificate.Content,
 			}); err != nil {
-				tempFile.Close()
+				_ = tempFile.Close()
 				return "", err
 			}
 		} else if ks.IsPrivateKeyEntry(alias) {
@@ -96,14 +96,14 @@ func convertJKStoPEM(jksPath, password string) (string, error) {
 					Type:  "CERTIFICATE",
 					Bytes: cert.Content,
 				}); err != nil {
-					tempFile.Close()
+					_ = tempFile.Close()
 					return "", err
 				}
 			}
 		}
 	}
 
-	tempFile.Close()
+	_ = tempFile.Close()
 	return tempFile.Name(), nil
 }
 

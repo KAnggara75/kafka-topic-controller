@@ -79,24 +79,24 @@ spec:
         image: ghcr.io/kanggara75/kafka-topic-controller:latest
         imagePullPolicy: Always
         env:
-        - name: KAFKA_BOOTSTRAPSERVERS
-          value: "kafka.pakaiwa.my.id:29092"
-        - name: KAFKA_PROPERTIES_SASL_MECHANISM
-          value: "PLAIN"
-        - name: KAFKA_PROPERTIES_SECURITY_PROTOCOL
-          value: "SASL_SSL"
-        - name: KAFKA_PROPERTIES_SASL_JAAS_CONFIG
-          valueFrom:
-            secretKeyRef:
-              name: kasecrets
-              key: jaas_config
-        - name: KAFKA_PROPERTIES_SSL_TRUSTSTORE_LOCATION
-          value: "/opt/truststore.jks"
-        - name: KAFKA_PROPERTIES_SSL_TRUSTSTORE_PASSWORD
+        - name: BOOTSTRAP_SERVER
+          value: kafka.pakaiwa.my.id:29092
+        - name: SASL_MECHANISM
+          value: PLAIN
+        - name: SECURITY_PROTOCOL
+          value: SASL_SSL
+        - name: SSL_TRUSTSTORE_LOCATION
+          value: /opt/truststore.jks
+        - name: SSL_TRUSTSTORE_PASSWORD
           valueFrom:
             secretKeyRef:
               name: kasecrets
               key: root_password
+        - name: SASL_JAAS_CONFIG
+          valueFrom:
+            secretKeyRef:
+              name: kasecrets
+              key: jaas_config
         livenessProbe:
           httpGet:
             path: /healthz

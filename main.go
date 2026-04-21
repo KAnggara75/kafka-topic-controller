@@ -56,6 +56,16 @@ func convertJKStoPEM(jksPath, password string) (string, error) {
 	}
 	defer f.Close()
 
+	// Check for JKS magic bytes
+	magic := make([]byte, 4)
+	if _, err := f.Read(magic); err != nil {
+		return "", err
+	}
+	f.Seek(0, 0)
+	if magic[0] != 0xFE || magic[1] != 0xED || magic[2] != 0xFE || magic[3] != 0xED {
+		setupLog.Info("Warning: File does not have JKS magic bytes (0xFEEDFEED)", "magic", magic)
+	}
+
 	ks := keystore.New()
 	if err := ks.Load(f, []byte(password)); err != nil {
 		return "", err
@@ -139,10 +149,11 @@ func main() {
 		setupLog.Info("Converting JKS truststore to PEM", "path", caCertPath)
 		pemPath, err := convertJKStoPEM(caCertPath, caCertPassword)
 		if err != nil {
-			setupLog.Error(err, "Failed to convert JKS to PEM")
+			setupLog.Error(err, "CRITICAL: Failed to convert JKS to PEM. Connection will likely fail.")
+			os.Exit(1)
 		} else {
 			caCertPath = pemPath
-			setupLog.Info("JKS converted to PEM", "pemPath", pemPath)
+			setupLog.Info("JKS converted to PEM successfully", "pemPath", pemPath)
 		}
 	}
 

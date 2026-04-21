@@ -79,18 +79,28 @@ func convertJKStoPEM(jksPath, password string) (string, error) {
 
 	for _, alias := range ks.Aliases() {
 		if ks.IsTrustedCertificateEntry(alias) {
-			entry, _ := ks.GetTrustedCertificateEntry(alias)
-			pem.Encode(tempFile, &pem.Block{
+			entry, err := ks.GetTrustedCertificateEntry(alias)
+			if err != nil {
+				continue
+			}
+			if err := pem.Encode(tempFile, &pem.Block{
 				Type:  "CERTIFICATE",
 				Bytes: entry.Certificate.Content,
-			})
+			}); err != nil {
+				return "", err
+			}
 		} else if ks.IsPrivateKeyEntry(alias) {
-			entry, _ := ks.GetPrivateKeyEntry(alias, []byte(password))
+			entry, err := ks.GetPrivateKeyEntry(alias, []byte(password))
+			if err != nil {
+				continue
+			}
 			for _, cert := range entry.CertificateChain {
-				pem.Encode(tempFile, &pem.Block{
+				if err := pem.Encode(tempFile, &pem.Block{
 					Type:  "CERTIFICATE",
 					Bytes: cert.Content,
-				})
+				}); err != nil {
+					return "", err
+				}
 			}
 		}
 	}

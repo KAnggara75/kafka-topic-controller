@@ -1,12 +1,11 @@
 package main
 
 import (
+	"encoding/pem"
 	"flag"
 	"os"
 	"regexp"
 	"strings"
-
-	"encoding/pem"
 
 	"github.com/pavlo-v-chernykh/keystore-go/v4"
 
@@ -66,36 +65,45 @@ func convertJKStoPEM(jksPath, password string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer tempFile.Close()
+	// We keep the file open while encoding, then return the name.
+	// The caller is responsible for deleting it if needed, though here it stays for the life of the process.
 
 	for _, alias := range ks.Aliases() {
 		if ks.IsTrustedCertificateEntry(alias) {
+			setupLog.Info("Extracting trusted certificate", "alias", alias)
 			entry, err := ks.GetTrustedCertificateEntry(alias)
 			if err != nil {
+				setupLog.Error(err, "Failed to get trusted cert entry", "alias", alias)
 				continue
 			}
 			if err := pem.Encode(tempFile, &pem.Block{
 				Type:  "CERTIFICATE",
 				Bytes: entry.Certificate.Content,
 			}); err != nil {
+				tempFile.Close()
 				return "", err
 			}
 		} else if ks.IsPrivateKeyEntry(alias) {
+			setupLog.Info("Extracting certificate chain from private key", "alias", alias)
 			entry, err := ks.GetPrivateKeyEntry(alias, []byte(password))
 			if err != nil {
+				setupLog.Error(err, "Failed to get private key entry", "alias", alias)
 				continue
 			}
-			for _, cert := range entry.CertificateChain {
+			for i, cert := range entry.CertificateChain {
+				setupLog.Info("Encoding cert from chain", "alias", alias, "index", i)
 				if err := pem.Encode(tempFile, &pem.Block{
 					Type:  "CERTIFICATE",
 					Bytes: cert.Content,
 				}); err != nil {
+					tempFile.Close()
 					return "", err
 				}
 			}
 		}
 	}
 
+	tempFile.Close()
 	return tempFile.Name(), nil
 }
 
@@ -109,9 +117,13 @@ func main() {
 	var kafkaTLSEnabled bool
 	var kafkaTLSSkipVerify bool
 
-	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
-	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
-	flag.BoolVar(&enableLeaderElection, "leader-elect", false, "Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
+	opts := zap.Options{
+		Development: true,
+	}
+	opts.BindFlags(flag.CommandLine)
+	flag.Parse()
+
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
 	// Support both standard and user-specific env var names
 	bootstrap := os.Getenv("KAFKA_BOOTSTRAP_SERVERS")
@@ -121,7 +133,7 @@ func main() {
 	tlsEnabledEnv := os.Getenv("KAFKA_TLS_ENABLED")
 	tlsSkipVerifyEnv := os.Getenv("KAFKA_TLS_SKIP_VERIFY")
 	caCertPath := os.Getenv("SSL_TRUSTSTORE_LOCATION")
-	caCertPassword := os.Getenv("SSL_TRUSTSTORE_PASSWORD")
+	caCertPassword := strings.TrimSpace(os.Getenv("SSL_TRUSTSTORE_PASSWORD"))
 
 	if caCertPath != "" && strings.HasSuffix(caCertPath, ".jks") {
 		setupLog.Info("Converting JKS truststore to PEM", "path", caCertPath)
@@ -151,14 +163,6 @@ func main() {
 	flag.StringVar(&kafkaSASLPassword, "kafka-sasl-password", kafkaSASLPassword, "Kafka SASL password")
 	flag.BoolVar(&kafkaTLSEnabled, "kafka-tls-enabled", tlsEnabled, "Enable Kafka TLS")
 	flag.BoolVar(&kafkaTLSSkipVerify, "kafka-tls-skip-verify", tlsSkipVerifyEnv == "true", "Skip Kafka TLS verification")
-
-	opts := zap.Options{
-		Development: true,
-	}
-	opts.BindFlags(flag.CommandLine)
-	flag.Parse()
-
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
 	if kafkaBootstrapServers == "" {
 		setupLog.Error(nil, "kafka-bootstrap-servers must be set via flag or KAFKA_BOOTSTRAP_SERVERS env var")

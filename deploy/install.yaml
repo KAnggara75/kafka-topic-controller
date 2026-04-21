@@ -109,6 +109,10 @@ spec:
             port: 8081
           initialDelaySeconds: 5
           periodSeconds: 10
+        volumeMounts:
+        - name: truststore
+          mountPath: /opt/truststore.jks
+          subPath: truststore.jks
         resources:
           limits:
             cpu: 500m
@@ -116,3 +120,10 @@ spec:
           requests:
             cpu: 100m
             memory: 128Mi
+      volumes:
+      - name: truststore
+        secret:
+          secretName: kasecrets
+          items:
+          - key: truststore.jks
+            path: truststore.jks

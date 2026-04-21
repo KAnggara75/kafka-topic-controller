@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/x509"
 	"encoding/pem"
 	"flag"
 	"os"
@@ -8,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/pavlo-v-chernykh/keystore-go/v4"
+	"golang.org/x/crypto/pkcs12"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -50,73 +52,85 @@ func parseJAASConfig(jaas string) (string, string) {
 }
 
 func convertJKStoPEM(jksPath, password string) (string, error) {
-	f, err := os.Open(jksPath) // #nosec G304 G703
+	data, err := os.ReadFile(jksPath) // #nosec G304 G703
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
 
-	// Check for JKS magic bytes
-	magic := make([]byte, 4)
-	if _, err := f.Read(magic); err != nil {
-		return "", err
-	}
-	if _, err := f.Seek(0, 0); err != nil {
-		return "", err
-	}
-	if magic[0] != 0xFE || magic[1] != 0xED || magic[2] != 0xFE || magic[3] != 0xED {
-		setupLog.Info("Warning: File does not have JKS magic bytes (0xFEEDFEED)", "magic", magic)
+	// 1. Try to see if it's already a PEM file
+	if strings.Contains(string(data), "-----BEGIN CERTIFICATE-----") {
+		setupLog.Info("File appears to be in PEM format already, using as-is")
+		return jksPath, nil
 	}
 
-	ks := keystore.New()
-	if err := ks.Load(f, []byte(password)); err != nil {
-		return "", err
-	}
+	// 2. Try JKS if magic bytes match
+	if len(data) >= 4 && data[0] == 0xFE && data[1] == 0xED && data[2] == 0xFE && data[3] == 0xED {
+		setupLog.Info("Detected JKS magic bytes, parsing as JKS")
+		ks := keystore.New()
+		if err := ks.Load(strings.NewReader(string(data)), []byte(password)); err != nil {
+			return "", err
+		}
 
-	tempFile, err := os.CreateTemp("", "kafka-ca-*.pem")
-	if err != nil {
-		return "", err
-	}
-	// We keep the file open while encoding, then return the name.
-	// The caller is responsible for deleting it if needed, though here it stays for the life of the process.
+		tempFile, err := os.CreateTemp("", "kafka-ca-*.pem")
+		if err != nil {
+			return "", err
+		}
+		defer tempFile.Close()
 
-	for _, alias := range ks.Aliases() {
-		if ks.IsTrustedCertificateEntry(alias) {
-			setupLog.Info("Extracting trusted certificate", "alias", alias)
-			entry, err := ks.GetTrustedCertificateEntry(alias)
-			if err != nil {
-				setupLog.Error(err, "Failed to get trusted cert entry", "alias", alias)
-				continue
-			}
-			if err := pem.Encode(tempFile, &pem.Block{
-				Type:  "CERTIFICATE",
-				Bytes: entry.Certificate.Content,
-			}); err != nil {
-				_ = tempFile.Close()
-				return "", err
-			}
-		} else if ks.IsPrivateKeyEntry(alias) {
-			setupLog.Info("Extracting certificate chain from private key", "alias", alias)
-			entry, err := ks.GetPrivateKeyEntry(alias, []byte(password))
-			if err != nil {
-				setupLog.Error(err, "Failed to get private key entry", "alias", alias)
-				continue
-			}
-			for i, cert := range entry.CertificateChain {
-				setupLog.Info("Encoding cert from chain", "alias", alias, "index", i)
-				if err := pem.Encode(tempFile, &pem.Block{
-					Type:  "CERTIFICATE",
-					Bytes: cert.Content,
-				}); err != nil {
-					_ = tempFile.Close()
-					return "", err
+		for _, alias := range ks.Aliases() {
+			if ks.IsTrustedCertificateEntry(alias) {
+				entry, err := ks.GetTrustedCertificateEntry(alias)
+				if err == nil {
+					_ = pem.Encode(tempFile, &pem.Block{Type: "CERTIFICATE", Bytes: entry.Certificate.Content})
+				}
+			} else if ks.IsPrivateKeyEntry(alias) {
+				entry, err := ks.GetPrivateKeyEntry(alias, []byte(password))
+				if err == nil {
+					for _, cert := range entry.CertificateChain {
+						_ = pem.Encode(tempFile, &pem.Block{Type: "CERTIFICATE", Bytes: cert.Content})
+					}
 				}
 			}
 		}
+		return tempFile.Name(), nil
 	}
 
-	_ = tempFile.Close()
-	return tempFile.Name(), nil
+	// 3. Try PKCS12 (common for "JKS" files that are actually PKCS12)
+	// PKCS12 starts with 0x30 (ASN.1 Sequence)
+	if len(data) > 0 && data[0] == 0x30 {
+		setupLog.Info("Attempting to parse as PKCS12")
+		blocks, err := pkcs12.ToPEM(data, password)
+		if err == nil {
+			tempFile, err := os.CreateTemp("", "kafka-ca-*.pem")
+			if err != nil {
+				return "", err
+			}
+			defer tempFile.Close()
+			for _, block := range blocks {
+				// Only extract certificates
+				if block.Type == "CERTIFICATE" {
+					_ = pem.Encode(tempFile, block)
+				}
+			}
+			return tempFile.Name(), nil
+		}
+	}
+
+	// 4. Final attempt: see if it's a raw DER certificate
+	cert, err := x509.ParseCertificate(data)
+	if err == nil {
+		setupLog.Info("File appears to be a raw DER certificate, converting to PEM")
+		tempFile, err := os.CreateTemp("", "kafka-ca-*.pem")
+		if err != nil {
+			return "", err
+		}
+		defer tempFile.Close()
+		_ = pem.Encode(tempFile, &pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})
+		return tempFile.Name(), nil
+	}
+
+	setupLog.Info("Warning: File format not recognized as JKS, PKCS12, or PEM. Using as-is.")
+	return jksPath, nil
 }
 
 func main() {
@@ -151,11 +165,11 @@ func main() {
 		setupLog.Info("Converting JKS truststore to PEM", "path", caCertPath)
 		pemPath, err := convertJKStoPEM(caCertPath, caCertPassword)
 		if err != nil {
-			setupLog.Error(err, "CRITICAL: Failed to convert JKS to PEM. Connection will likely fail.")
+			setupLog.Error(err, "CRITICAL: Failed to convert JKS to PEM.")
 			os.Exit(1)
 		} else {
 			caCertPath = pemPath
-			setupLog.Info("JKS converted to PEM successfully", "pemPath", pemPath)
+			setupLog.Info("CA truststore ready", "path", caCertPath)
 		}
 	}
 

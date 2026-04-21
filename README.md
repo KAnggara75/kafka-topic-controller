@@ -4,7 +4,7 @@ Kubernetes Controller untuk mengelola topik Kafka secara deklaratif melalui Cust
 
 ## Status Proyek
 
-- **Code Coverage**: 18.7% (Target: 10%)
+- **Code Coverage**: 19.9% (Target: 10%)
 
 ## Fitur
 

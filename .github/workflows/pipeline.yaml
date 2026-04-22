@@ -58,6 +58,7 @@ jobs:
   security_scan:
     name: Go Security Scan
     runs-on: ubuntu-24.04
+    if: needs.changes.outputs.src == 'true'
     steps:
       - uses: actions/checkout@v6.0.2
 

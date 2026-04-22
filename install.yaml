@@ -137,14 +137,14 @@ spec:
         - name: SCC_URL
           valueFrom:
             secretKeyRef:
-              key: SCC_URL
-              name: kafka-controller-secret
+              key: scc_url
+              name: kasecrets
               optional: true
         - name: AUTH
           valueFrom:
             secretKeyRef:
-              key: AUTH
-              name: kafka-controller-secret
+              key: scc_auth
+              name: kasecrets
               optional: true
         image: kanggara75/kafka-topic-controller:latest
         name: manager

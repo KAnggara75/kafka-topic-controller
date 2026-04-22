@@ -21,11 +21,11 @@ var (
 func downloadCertOnce(certURL string) string {
 	once.Do(func() {
 		const (
-			dir      = "tmp/kafka"
+			dir      = "/tmp/kafka"
 			certName = "kafka.cert"
 		)
 
-		if err := os.MkdirAll(dir, 0750); err != nil {
+		if err := os.MkdirAll(dir, 0755); err != nil {
 			panic("Failed to create dir for Kafka cert: " + err.Error())
 		}
 

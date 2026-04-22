@@ -1,39 +1,50 @@
-# Build stage
-FROM golang:1.26.2-alpine AS builder
+# -------- BUILD STAGE --------
+FROM golang:1.22-bookworm AS builder
 
-# Set working directory
-WORKDIR /app
+WORKDIR /build
 
-# Copy go mod and sum files
+# Install dependency untuk CGO + Kafka
+RUN apt-get update && apt-get install -y \
+    git \
+    ca-certificates \
+    build-essential \
+    librdkafka-dev \
+ && rm -rf /var/lib/apt/lists/*
+
+# Cache dependency
 COPY go.mod go.sum ./
-
-# Download dependencies
 RUN go mod download
 
-# Copy the rest of the source code
+# Copy source
 COPY . .
 
-# Build the application as a static binary
-RUN CGO_ENABLED=0 GOOS=linux go build -o /app/kafka-topic-controller ./main.go
+# Build binary (CGO wajib aktif)
+RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
+    go build -ldflags="-w -s" -trimpath \
+    -o kafka-topic-controller ./main.go
 
-# Final stage
-FROM alpine:latest
 
-# Install essential packages
-RUN apk --no-cache add ca-certificates tzdata
+# -------- RUNTIME STAGE --------
+FROM debian:bookworm-slim
 
-# Set working directory
-WORKDIR /root/
+# Install runtime dependency (WAJIB untuk confluent)
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    tzdata \
+    librdkafka1 \
+ && rm -rf /var/lib/apt/lists/*
 
-# Copy the binary from the builder stage
-COPY --from=builder /app/kafka-topic-controller .
+WORKDIR /app
 
-# Expose the application port
-EXPOSE 8081
+COPY --from=builder /build/kafka-topic-controller .
 
-# Set environment variables (Defaults)
+# Optional: security hardening
+RUN useradd -u 10001 appuser
+USER appuser
+
 ENV PORT=8081
 ENV TZ=Asia/Jakarta
 
-# Run the binary
+EXPOSE 8081
+
 CMD ["./kafka-topic-controller"]

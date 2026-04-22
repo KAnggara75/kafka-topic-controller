@@ -8,6 +8,7 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/KAnggara75/scc2go"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
@@ -26,12 +27,23 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(kafkav1.AddToScheme(scheme))
-	scc2go.GetEnv(os.Getenv("SCC_URL"), os.Getenv("AUTH"))
 }
 
 func main() {
 	var metricsAddr string
-	ctrl.SetLogger(ctrl.Log.WithName("kafka-topic-controller"))
+
+	// ✅ SET LOGGER PALING AWAL
+	ctrl.SetLogger(zap.New(
+		zap.UseDevMode(true),
+		zap.WriteTo(os.Stdout),
+	))
+
+	setupLog.Info("starting app")
+
+	// load config
+	scc2go.GetEnv(os.Getenv("SCC_URL"), os.Getenv("AUTH"))
+
+	setupLog.Info("config loaded")
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:  scheme,
@@ -49,6 +61,7 @@ func main() {
 	}
 
 	if err = reconciler.SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to setup controller")
 		os.Exit(1)
 	}
 
@@ -63,6 +76,7 @@ func main() {
 	}
 
 	setupLog.Info("starting manager")
+
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)

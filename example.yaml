@@ -1,0 +1,12 @@
+apiVersion: kafka.kanggara.my.id/v1
+kind: KafkaTopic
+metadata:
+  name: example-topic
+  namespace: kafka
+spec:
+  partitions: 3
+  replicationFactor: 2
+  config:
+    cleanup.policy: delete
+    retention.ms: "604800000"
+    segment.bytes: "1073741824"

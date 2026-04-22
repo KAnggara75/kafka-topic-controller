@@ -9,7 +9,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
+	ckafka "github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/spf13/viper"
 )
 
@@ -21,7 +21,7 @@ var (
 func downloadCertOnce(certURL string) string {
 	once.Do(func() {
 		const (
-			dir      = "/tmp/kafka"
+			dir      = "tmp/kafka"
 			certName = "kafka.cert"
 		)
 
@@ -75,8 +75,9 @@ func downloadCertOnce(certURL string) string {
 	return localCertPath
 }
 
-func GetBaseKafkaConfig() *kafka.ConfigMap {
+func GetBaseKafkaConfig() *ckafka.ConfigMap {
 	certLocation := viper.GetString("kafka.ssl.ca.location")
+	println(certLocation)
 
 	// cek apakah certLocation adalah URL
 	if u, err := url.Parse(certLocation); err == nil && (strings.HasPrefix(u.Scheme, "http")) {
@@ -88,7 +89,7 @@ func GetBaseKafkaConfig() *kafka.ConfigMap {
 		}
 	}
 
-	return &kafka.ConfigMap{
+	return &ckafka.ConfigMap{
 		"bootstrap.servers": viper.GetString("kafka.bootstrap.servers"),
 		"security.protocol": viper.GetString("kafka.security.protocol"),
 		"ssl.ca.location":   certLocation,

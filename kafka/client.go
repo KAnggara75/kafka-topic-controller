@@ -3,7 +3,7 @@ package kafka
 import (
 	"errors"
 
-	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
+	ckafka "github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	kafkav1 "github.com/KAnggara75/kafka-topic-controller/api/v1"
@@ -22,16 +22,28 @@ type KafkaClient interface {
 }
 
 type KafkaAdminClient struct {
-	k *kafka.AdminClient
+	k *ckafka.AdminClient
 }
 
-func NewKafkaAdminClient(cfg *kafka.ConfigMap) *KafkaAdminClient {
-	k, err := kafka.NewAdminClient(cfg)
+func NewKafkaAdminClient(cfg *ckafka.ConfigMap) *KafkaAdminClient {
+	setupLog.Info("creating kafka admin client...")
+	k, err := ckafka.NewAdminClient(cfg)
 	if err != nil {
 		setupLog.Error(err, "failed to create kafka admin client")
 		return nil
 	}
 
+	// Validate connection by fetching metadata
+	setupLog.Info("validating kafka connection...")
+	_, err = k.GetMetadata(nil, false, 5000)
+	if err != nil {
+		setupLog.Error(err, "failed to connect to kafka brokers")
+		// We might still want to return the client depending on use case,
+		// but here we fail fast.
+		return nil
+	}
+
+	setupLog.Info("successfully connected to kafka")
 	return &KafkaAdminClient{
 		k: k,
 	}

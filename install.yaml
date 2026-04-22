@@ -122,6 +122,11 @@ metadata:
   namespace: kafka
 spec:
   replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       control-plane: controller-manager
@@ -146,7 +151,7 @@ spec:
               key: scc_auth
               name: kasecrets
               optional: true
-        image: kanggara75/kafka-topic-controller:latest
+        image: ghcr.io/kanggara75/kafka-topic-controller:latest
         name: manager
         resources:
           limits:

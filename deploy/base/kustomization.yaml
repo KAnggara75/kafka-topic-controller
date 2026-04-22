@@ -3,13 +3,14 @@ kind: Kustomization
 
 namespace: kafka
 
-commonLabels:
-  app.kubernetes.io/name: kafka-topic-controller
+labels:
+  - pairs:
+      app.kubernetes.io/name: kafka-topic-controller
 
 resources:
-  # - namespace.yaml
-  # - crd.yaml
-  # - sa.yaml
-  # - rbac-role.yaml
-  # - rbac-role-binding.yaml
+  - namespace.yaml
+  - crd.yaml
+  - sa.yaml
+  - rbac-role.yaml
+  - rbac-role-binding.yaml
   - deployment.yaml

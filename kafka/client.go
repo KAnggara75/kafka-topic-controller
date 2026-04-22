@@ -1,7 +1,9 @@
 package kafka
 
 import (
+	"context"
 	"errors"
+	"time"
 
 	ckafka "github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -10,8 +12,9 @@ import (
 )
 
 var (
-	setupLog    = ctrl.Log.WithName("kafka-client")
-	errNotFound = errors.New("topic not found")
+	setupLog              = ctrl.Log.WithName("kafka-client")
+	errNotFound           = errors.New("topic not found")
+	errUnknownTopicOrPart = errors.New("Broker: Unknown topic or partition")
 )
 
 type KafkaClient interface {
@@ -50,9 +53,47 @@ func NewKafkaAdminClient(cfg *ckafka.ConfigMap) *KafkaAdminClient {
 }
 
 func (k *KafkaAdminClient) GetTopic(name string) (any, error) {
-	setupLog.Info("get topic", "name", name)
-	// TODO: implement kafka admin client
-	return nil, errNotFound
+
+	if k == nil || k.k == nil {
+		return nil, errors.New("kafka client not initialized")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Describe topic
+	results, err := k.k.DescribeTopics(
+		ctx,
+		ckafka.NewTopicCollectionOfTopicNames([]string{name}),
+	)
+	if err != nil {
+		setupLog.Error(err, "failed to describe topic")
+		return nil, err
+	}
+
+	if len(results.TopicDescriptions) == 0 {
+		setupLog.Info("get topic", "name", name, "err", errNotFound)
+		return nil, errNotFound
+	}
+
+	topic := results.TopicDescriptions[0]
+
+	// cek error dari broker
+	if topic.Error.Code() != ckafka.ErrNoError {
+		if topic.Error.Code() == ckafka.ErrUnknownTopicOrPart {
+			setupLog.Info("get topic", "name", name, "result", "not found", "err", errUnknownTopicOrPart)
+			return nil, errNotFound
+		}
+		setupLog.Info("get topic", "name", name, "err", topic.Error)
+		return nil, topic.Error
+	}
+
+	setupLog.Info("topic found",
+		"name", topic.Name,
+		"partitions", len(topic.Partitions),
+	)
+
+	return topic, nil
 }
 
 func (k *KafkaAdminClient) CreateTopic(spec kafkav1.KafkaTopicSpec) error {

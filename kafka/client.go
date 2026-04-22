@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	ckafka "github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	ctrl "sigs.k8s.io/controller-runtime"
 
@@ -19,7 +20,7 @@ var (
 
 type KafkaClient interface {
 	GetTopic(name string) (any, error)
-	CreateTopic(spec kafkav1.KafkaTopicSpec) error
+	CreateTopic(name string, spec kafkav1.KafkaTopicSpec) error
 	UpdateTopic(spec kafkav1.KafkaTopicSpec) error
 	NeedsUpdate(actual any, desired kafkav1.KafkaTopicSpec) bool
 }
@@ -96,9 +97,52 @@ func (k *KafkaAdminClient) GetTopic(name string) (any, error) {
 	return topic, nil
 }
 
-func (k *KafkaAdminClient) CreateTopic(spec kafkav1.KafkaTopicSpec) error {
-	setupLog.Info("create topic", "spec", spec)
-	// TODO: call kafka create topic
+func (k *KafkaAdminClient) CreateTopic(name string, spec kafkav1.KafkaTopicSpec) error {
+	setupLog.Info("create topic",
+		"name", name,
+		"partitions", spec.Partitions,
+		"replicationFactor", spec.ReplicationFactor,
+	)
+
+	if k == nil || k.k == nil {
+		return errors.New("kafka client not initialized")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	topicSpec := kafka.TopicSpecification{
+		Topic:             name,
+		NumPartitions:     int(spec.Partitions),
+		ReplicationFactor: int(spec.ReplicationFactor),
+		Config:            spec.Config,
+	}
+
+	results, err := k.k.CreateTopics(ctx, []kafka.TopicSpecification{topicSpec})
+	if err != nil {
+		setupLog.Error(err, "failed to create topic")
+		return err
+	}
+
+	if len(results) == 0 {
+		return errors.New("empty result from kafka create topic")
+	}
+
+	res := results[0]
+
+	// handle result error
+	if res.Error.Code() != kafka.ErrNoError {
+		// idempotent: topic sudah ada
+		if res.Error.Code() == kafka.ErrTopicAlreadyExists {
+			setupLog.Info("topic already exists", "name", name)
+			return nil
+		}
+
+		setupLog.Error(res.Error, "failed to create topic", "name", name)
+		return res.Error
+	}
+
+	setupLog.Info("topic created successfully", "name", name)
 	return nil
 }
 

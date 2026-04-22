@@ -68,7 +68,7 @@ metadata:
   name: example-topic
 spec:
   partitions: 3
-  replicationFactor: 2
+  replicationFactor: 1
   retentionMinutes: 1440
   settings:
     cleanup.policy: delete

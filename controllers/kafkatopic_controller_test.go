@@ -16,14 +16,14 @@ import (
 
 type MockKafkaClient struct {
 	GetTopicFn    func(name string) (any, error)
-	CreateTopicFn func(spec kafkav1.KafkaTopicSpec) error
+	CreateTopicFn func(name string, spec kafkav1.KafkaTopicSpec) error
 	UpdateTopicFn func(spec kafkav1.KafkaTopicSpec) error
 	NeedsUpdateFn func(actual any, desired kafkav1.KafkaTopicSpec) bool
 }
 
 func (m *MockKafkaClient) GetTopic(name string) (any, error) { return m.GetTopicFn(name) }
-func (m *MockKafkaClient) CreateTopic(spec kafkav1.KafkaTopicSpec) error {
-	return m.CreateTopicFn(spec)
+func (m *MockKafkaClient) CreateTopic(name string, spec kafkav1.KafkaTopicSpec) error {
+	return m.CreateTopicFn(name, spec)
 }
 func (m *MockKafkaClient) UpdateTopic(spec kafkav1.KafkaTopicSpec) error {
 	return m.UpdateTopicFn(spec)
@@ -54,7 +54,7 @@ func TestKafkaTopicReconciler_Reconcile_Create(t *testing.T) {
 		GetTopicFn: func(name string) (any, error) {
 			return nil, errors.New("not found")
 		},
-		CreateTopicFn: func(spec kafkav1.KafkaTopicSpec) error {
+		CreateTopicFn: func(name string, spec kafkav1.KafkaTopicSpec) error {
 			created = true
 			return nil
 		},

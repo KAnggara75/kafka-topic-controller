@@ -29,7 +29,7 @@ func TestKafkaAdminClient_Methods(t *testing.T) {
 		t.Errorf("expected errNotFound, got %v", err)
 	}
 
-	err = client.CreateTopic(kafkav1.KafkaTopicSpec{})
+	err = client.CreateTopic("test", kafkav1.KafkaTopicSpec{})
 	if err != nil {
 		t.Errorf("expected nil error, got %v", err)
 	}

@@ -31,7 +31,7 @@ func (r *KafkaTopicReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	if err != nil {
 		// topic belum ada → create
-		err = r.Kafka.CreateTopic(topic.Spec)
+		err = r.Kafka.CreateTopic(topic.Name, topic.Spec)
 		if err != nil {
 			return ctrl.Result{RequeueAfter: time.Second * 10}, err
 		}

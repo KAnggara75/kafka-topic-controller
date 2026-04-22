@@ -2,157 +2,55 @@ package controllers
 
 import (
 	"context"
+	"time"
 
-	"github.com/segmentio/topicctl/pkg/admin"
-	"github.com/segmentio/topicctl/pkg/apply"
-	"github.com/segmentio/topicctl/pkg/config"
+	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	kafkav1alpha1 "github.com/KAnggara75/kafka-topic-controller/api/v1alpha1"
+	kafkav1 "github.com/KAnggara75/kafka-topic-controller/api/v1"
+	"github.com/KAnggara75/kafka-topic-controller/kafka"
 )
 
-const kafkaTopicFinalizer = "kafkatopic.topicctl.kafka.kanggara.my.id/finalizer"
-
-// KafkaTopicReconciler reconciles a KafkaTopic object
 type KafkaTopicReconciler struct {
 	client.Client
-	Scheme           *runtime.Scheme
-	BootstrapServers string
-	SASLMechanism    string
-	SASLUser         string
-	SASLPassword     string
-	TLSEnabled       bool
-	TLSSkipVerify    bool
-	TLSCACertPath    string
+	Scheme *runtime.Scheme
+	Kafka  kafka.KafkaClient
+	Log    logr.Logger
 }
-
-//+kubebuilder:rbac:groups=kafka.kanggara.my.id,resources=kafkatopics,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=kafka.kanggara.my.id,resources=kafkatopics/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=kafka.kanggara.my.id,resources=kafkatopics/finalizers,verbs=update
 
 func (r *KafkaTopicReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	l := log.FromContext(ctx)
+	var topic kafkav1.KafkaTopic
 
-	var kafkaTopic kafkav1alpha1.KafkaTopic
-	if err := r.Get(ctx, req.NamespacedName, &kafkaTopic); err != nil {
-		return ctrl.Result{}, client.IgnoreNotFound(err)
+	if err := r.Get(ctx, req.NamespacedName, &topic); err != nil {
+		return ctrl.Result{RequeueAfter: time.Second * 10}, client.IgnoreNotFound(err)
 	}
 
-	// Handle deletion
-	if !kafkaTopic.DeletionTimestamp.IsZero() {
-		l.Info("Deleting Kafka topic", "name", kafkaTopic.Name)
-		if controllerutil.ContainsFinalizer(&kafkaTopic, kafkaTopicFinalizer) {
-			if err := r.deleteKafkaTopic(ctx, &kafkaTopic); err != nil {
-				l.Error(err, "Failed to delete kafka topic")
-				return ctrl.Result{}, err
-			}
-			controllerutil.RemoveFinalizer(&kafkaTopic, kafkaTopicFinalizer)
-			if err := r.Update(ctx, &kafkaTopic); err != nil {
-				return ctrl.Result{}, err
-			}
+	actual, err := r.Kafka.GetTopic(topic.Name)
+
+	if err != nil {
+		// topic belum ada → create
+		err = r.Kafka.CreateTopic(topic.Spec)
+		if err != nil {
+			return ctrl.Result{RequeueAfter: time.Second * 10}, err
 		}
-		return ctrl.Result{}, nil
+		return ctrl.Result{RequeueAfter: time.Second * 10}, nil
 	}
 
-	// Add finalizer
-	if !controllerutil.ContainsFinalizer(&kafkaTopic, kafkaTopicFinalizer) {
-		controllerutil.AddFinalizer(&kafkaTopic, kafkaTopicFinalizer)
-		if err := r.Update(ctx, &kafkaTopic); err != nil {
-			return ctrl.Result{}, err
+	// compare & update
+	if r.Kafka.NeedsUpdate(actual, topic.Spec) {
+		err = r.Kafka.UpdateTopic(topic.Spec)
+		if err != nil {
+			return ctrl.Result{RequeueAfter: time.Second * 10}, err
 		}
 	}
 
-	// Sync with Kafka
-	l.Info("Syncing Kafka topic", "name", kafkaTopic.Name)
-	if err := r.syncKafkaTopic(ctx, &kafkaTopic); err != nil {
-		l.Error(err, "Failed to sync kafka topic")
-		return ctrl.Result{}, err
-	}
-
-	return ctrl.Result{}, nil
-}
-
-func (r *KafkaTopicReconciler) deleteKafkaTopic(ctx context.Context, kt *kafkav1alpha1.KafkaTopic) error {
-	adminClient, err := admin.NewBrokerAdminClient(ctx, admin.BrokerAdminClientConfig{
-		ConnectorConfig: admin.ConnectorConfig{
-			BrokerAddr: r.BootstrapServers,
-			SASL: admin.SASLConfig{
-				Mechanism: admin.SASLMechanism(r.SASLMechanism),
-				Username:  r.SASLUser,
-				Password:  r.SASLPassword,
-			},
-			TLS: admin.TLSConfig{
-				Enabled:    r.TLSEnabled,
-				SkipVerify: r.TLSSkipVerify,
-				CACertPath: r.TLSCACertPath,
-			},
-		},
-	})
-	if err != nil {
-		return err
-	}
-	defer adminClient.Close()
-
-	return adminClient.DeleteTopic(ctx, kt.Name)
-}
-
-func (r *KafkaTopicReconciler) syncKafkaTopic(ctx context.Context, kt *kafkav1alpha1.KafkaTopic) error {
-	adminClient, err := admin.NewBrokerAdminClient(ctx, admin.BrokerAdminClientConfig{
-		ConnectorConfig: admin.ConnectorConfig{
-			BrokerAddr: r.BootstrapServers,
-			SASL: admin.SASLConfig{
-				Mechanism: admin.SASLMechanism(r.SASLMechanism),
-				Username:  r.SASLUser,
-				Password:  r.SASLPassword,
-			},
-			TLS: admin.TLSConfig{
-				Enabled:    r.TLSEnabled,
-				SkipVerify: r.TLSSkipVerify,
-				CACertPath: r.TLSCACertPath,
-			},
-		},
-	})
-	if err != nil {
-		return err
-	}
-	defer adminClient.Close()
-
-	// Map K8s spec to topicctl config
-	topicConfig := config.TopicConfig{
-		Meta: config.ResourceMeta{
-			Name: kt.Name,
-		},
-		Spec: config.TopicSpec{
-			Partitions:        kt.Spec.Partitions,
-			ReplicationFactor: kt.Spec.ReplicationFactor,
-			Settings:          config.FromConfigMap(kt.Spec.Settings),
-			RetentionMinutes:  kt.Spec.RetentionMinutes,
-		},
-	}
-
-	// Use apply.NewTopicApplier to perform idempotent updates
-	applier, err := apply.NewTopicApplier(
-		ctx,
-		adminClient,
-		apply.TopicApplierConfig{
-			ClusterConfig: config.ClusterConfig{},
-			TopicConfig:   topicConfig,
-			DryRun:        false,
-		},
-	)
-	if err != nil {
-		return err
-	}
-
-	return applier.Apply(ctx)
+	return ctrl.Result{RequeueAfter: time.Second * 10}, nil
 }
 
 func (r *KafkaTopicReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&kafkav1alpha1.KafkaTopic{}).
+		For(&kafkav1.KafkaTopic{}).
 		Complete(r)
 }

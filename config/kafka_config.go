@@ -77,7 +77,6 @@ func downloadCertOnce(certURL string) string {
 
 func GetBaseKafkaConfig() *ckafka.ConfigMap {
 	certLocation := viper.GetString("kafka.ssl.ca.location")
-	println(certLocation)
 
 	// cek apakah certLocation adalah URL
 	if u, err := url.Parse(certLocation); err == nil && (strings.HasPrefix(u.Scheme, "http")) {

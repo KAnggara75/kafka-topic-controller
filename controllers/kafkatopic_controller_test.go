@@ -17,7 +17,7 @@ import (
 type MockKafkaClient struct {
 	GetTopicFn    func(name string) (any, error)
 	CreateTopicFn func(name string, spec kafkav1.KafkaTopicSpec) error
-	UpdateTopicFn func(spec kafkav1.KafkaTopicSpec) error
+	UpdateTopicFn func(name string, spec kafkav1.KafkaTopicSpec) error
 	NeedsUpdateFn func(actual any, desired kafkav1.KafkaTopicSpec) bool
 }
 
@@ -25,8 +25,8 @@ func (m *MockKafkaClient) GetTopic(name string) (any, error) { return m.GetTopic
 func (m *MockKafkaClient) CreateTopic(name string, spec kafkav1.KafkaTopicSpec) error {
 	return m.CreateTopicFn(name, spec)
 }
-func (m *MockKafkaClient) UpdateTopic(spec kafkav1.KafkaTopicSpec) error {
-	return m.UpdateTopicFn(spec)
+func (m *MockKafkaClient) UpdateTopic(name string, spec kafkav1.KafkaTopicSpec) error {
+	return m.UpdateTopicFn(name, spec)
 }
 func (m *MockKafkaClient) NeedsUpdate(actual any, desired kafkav1.KafkaTopicSpec) bool {
 	return m.NeedsUpdateFn(actual, desired)
@@ -108,7 +108,7 @@ func TestKafkaTopicReconciler_Reconcile_Update(t *testing.T) {
 		NeedsUpdateFn: func(actual any, desired kafkav1.KafkaTopicSpec) bool {
 			return true
 		},
-		UpdateTopicFn: func(spec kafkav1.KafkaTopicSpec) error {
+		UpdateTopicFn: func(name string, spec kafkav1.KafkaTopicSpec) error {
 			updated = true
 			return nil
 		},

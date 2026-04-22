@@ -25,7 +25,7 @@ func TestKafkaAdminClient_Methods(t *testing.T) {
 	client := &KafkaAdminClient{k: nil}
 
 	_, err := client.GetTopic("test")
-	if err != errNotFound {
+	if err != ErrNotFound {
 		t.Errorf("expected errNotFound, got %v", err)
 	}
 
@@ -34,7 +34,7 @@ func TestKafkaAdminClient_Methods(t *testing.T) {
 		t.Errorf("expected nil error, got %v", err)
 	}
 
-	err = client.UpdateTopic(kafkav1.KafkaTopicSpec{})
+	err = client.UpdateTopic("test", kafkav1.KafkaTopicSpec{})
 	if err != nil {
 		t.Errorf("expected nil error, got %v", err)
 	}

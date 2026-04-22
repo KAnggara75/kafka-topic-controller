@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -28,22 +29,35 @@ func (r *KafkaTopicReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	}
 
 	actual, err := r.Kafka.GetTopic(topic.Name)
-
 	if err != nil {
-		// topic belum ada → create
-		err = r.Kafka.CreateTopic(topic.Name, topic.Spec)
-		if err != nil {
-			return ctrl.Result{RequeueAfter: time.Second * 10}, err
+		if errors.Is(err, kafka.ErrNotFound) {
+			r.Log.Info("topic not found, creating", "name", topic.Name)
+
+			if err := r.Kafka.CreateTopic(topic.Name, topic.Spec); err != nil {
+				r.Log.Error(err, "failed to create topic", "name", topic.Name)
+				return ctrl.Result{}, err
+			}
+
+			r.Log.Info("topic created", "name", topic.Name)
+
+			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 		}
-		return ctrl.Result{RequeueAfter: time.Second * 10}, nil
+
+		return ctrl.Result{}, err
 	}
 
 	// compare & update
 	if r.Kafka.NeedsUpdate(actual, topic.Spec) {
-		err = r.Kafka.UpdateTopic(topic.Spec)
-		if err != nil {
-			return ctrl.Result{RequeueAfter: time.Second * 10}, err
+		r.Log.Info("topic needs update", "name", topic.Name)
+
+		if err := r.Kafka.UpdateTopic(topic.Name, topic.Spec); err != nil {
+			r.Log.Error(err, "failed to update topic", "name", topic.Name)
+			return ctrl.Result{}, err
 		}
+
+		r.Log.Info("topic updated", "name", topic.Name)
+
+		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 	}
 
 	return ctrl.Result{RequeueAfter: time.Second * 10}, nil

@@ -14,14 +14,20 @@ import (
 
 var (
 	setupLog              = ctrl.Log.WithName("kafka-client")
-	errNotFound           = errors.New("topic not found")
+	ErrNotFound           = errors.New("topic not found")
 	errUnknownTopicOrPart = errors.New("Broker: Unknown topic or partition")
 )
+
+type TopicInfo struct {
+	Name       string
+	Partitions int
+	Config     map[string]string
+}
 
 type KafkaClient interface {
 	GetTopic(name string) (any, error)
 	CreateTopic(name string, spec kafkav1.KafkaTopicSpec) error
-	UpdateTopic(spec kafkav1.KafkaTopicSpec) error
+	UpdateTopic(name string, spec kafkav1.KafkaTopicSpec) error
 	NeedsUpdate(actual any, desired kafkav1.KafkaTopicSpec) bool
 }
 
@@ -73,8 +79,8 @@ func (k *KafkaAdminClient) GetTopic(name string) (any, error) {
 	}
 
 	if len(results.TopicDescriptions) == 0 {
-		setupLog.Info("get topic", "name", name, "err", errNotFound)
-		return nil, errNotFound
+		setupLog.Info("get topic", "name", name, "err", ErrNotFound)
+		return nil, ErrNotFound
 	}
 
 	topic := results.TopicDescriptions[0]
@@ -83,7 +89,7 @@ func (k *KafkaAdminClient) GetTopic(name string) (any, error) {
 	if topic.Error.Code() != ckafka.ErrNoError {
 		if topic.Error.Code() == ckafka.ErrUnknownTopicOrPart {
 			setupLog.Info("get topic", "name", name, "result", "not found", "err", errUnknownTopicOrPart)
-			return nil, errNotFound
+			return nil, ErrNotFound
 		}
 		setupLog.Info("get topic", "name", name, "err", topic.Error)
 		return nil, topic.Error
@@ -146,13 +152,56 @@ func (k *KafkaAdminClient) CreateTopic(name string, spec kafkav1.KafkaTopicSpec)
 	return nil
 }
 
-func (k *KafkaAdminClient) UpdateTopic(spec kafkav1.KafkaTopicSpec) error {
-	setupLog.Info("update topic", "spec", spec)
+func (k *KafkaAdminClient) UpdateTopic(name string, spec kafkav1.KafkaTopicSpec) error {
+	setupLog.Info("update topic", "name", name, "spec", spec)
 	// TODO: update config
 	return nil
 }
 
 func (k *KafkaAdminClient) NeedsUpdate(actual any, desired kafkav1.KafkaTopicSpec) bool {
-	setupLog.Info("needs update", "actual", actual, "desired", desired)
-	return true
+	topic, ok := actual.(TopicInfo)
+	if !ok {
+		setupLog.Info("invalid actual type, forcing update")
+		return true
+	}
+
+	// 1. compare partitions (optional: hanya warn)
+	if int(desired.Partitions) < topic.Partitions {
+		setupLog.Info("partition decrease not supported",
+			"current", topic.Partitions,
+			"desired", desired.Partitions,
+		)
+	}
+
+	if int(desired.Partitions) > topic.Partitions {
+		setupLog.Info("partition increase detected",
+			"current", topic.Partitions,
+			"desired", desired.Partitions,
+		)
+		return true
+	}
+
+	// 2. compare config
+	for k, v := range desired.Config {
+		if topic.Config[k] != v {
+			setupLog.Info("config mismatch",
+				"key", k,
+				"current", topic.Config[k],
+				"desired", v,
+			)
+			return true
+		}
+	}
+
+	// 3. cek config yang dihapus
+	for k := range topic.Config {
+		if _, ok := desired.Config[k]; !ok {
+			setupLog.Info("config removed",
+				"key", k,
+			)
+			return true
+		}
+	}
+
+	return false
 }

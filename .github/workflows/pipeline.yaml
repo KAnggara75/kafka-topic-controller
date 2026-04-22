@@ -20,11 +20,11 @@ jobs:
               - 'go.mod'
               - 'go.sum'
               - 'Dockerfile'
-              - 'migrations/**'
               - '.github/workflows/pipeline.yaml'
 
   unit_test:
     name: Unit Tests & Coverage
+    if: needs.changes.outputs.src == 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6.0.2

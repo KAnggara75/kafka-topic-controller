@@ -8,7 +8,6 @@ labels:
       app.kubernetes.io/name: kafka-topic-controller
 
 resources:
-  - namespace.yaml
   - crd.yaml
   - sa.yaml
   - rbac-role.yaml

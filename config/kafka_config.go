@@ -25,7 +25,7 @@ func downloadCertOnce(certURL string) string {
 			certName = "kafka.cert"
 		)
 
-		if err := os.MkdirAll(dir, 0755); err != nil {
+		if err := os.MkdirAll(dir, 0750); err != nil {
 			panic("Failed to create dir for Kafka cert: " + err.Error())
 		}
 

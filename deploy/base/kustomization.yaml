@@ -7,7 +7,7 @@ commonLabels:
   app.kubernetes.io/name: kafka-topic-controller
 
 resources:
-  - namespace.yaml
+  # - namespace.yaml
   - crd.yaml
   - sa.yaml
   - rbac-role.yaml

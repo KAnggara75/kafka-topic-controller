@@ -16,7 +16,7 @@ import (
 type KafkaTopicReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
-	Kafka  *kafka.KafkaAdminClient
+	Kafka  kafka.KafkaClient
 	Log    logr.Logger
 }
 

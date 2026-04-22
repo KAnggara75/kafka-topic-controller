@@ -154,7 +154,94 @@ func (k *KafkaAdminClient) CreateTopic(name string, spec kafkav1.KafkaTopicSpec)
 
 func (k *KafkaAdminClient) UpdateTopic(name string, spec kafkav1.KafkaTopicSpec) error {
 	setupLog.Info("update topic", "name", name, "spec", spec)
-	// TODO: update config
+
+	if k == nil || k.k == nil {
+		return errors.New("kafka client not initialized")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	// =========================
+	// 1. UPDATE CONFIG
+	// =========================
+	if len(spec.Config) > 0 {
+		var configs []ckafka.ConfigEntry
+
+		for key, val := range spec.Config {
+			configs = append(configs, ckafka.ConfigEntry{
+				Name:  key,
+				Value: val,
+			})
+		}
+
+		resource := ckafka.ConfigResource{
+			Type:   ckafka.ResourceTopic,
+			Name:   name,
+			Config: configs,
+		}
+
+		results, err := k.k.AlterConfigs(ctx, []ckafka.ConfigResource{resource})
+		if err != nil {
+			setupLog.Error(err, "failed to alter config", "name", name)
+			return err
+		}
+
+		if len(results) > 0 && results[0].Error.Code() != ckafka.ErrNoError {
+			setupLog.Error(results[0].Error, "config update failed", "name", name)
+			return results[0].Error
+		}
+
+		setupLog.Info("config updated", "name", name)
+	}
+
+	// =========================
+	// 2. UPDATE PARTITIONS
+	// =========================
+	// Ambil metadata dulu
+	metadata, err := k.k.GetMetadata(&name, false, 5000)
+	if err != nil {
+		return err
+	}
+
+	topicMetadata, ok := metadata.Topics[name]
+	if !ok {
+		return ErrNotFound
+	}
+
+	currentPartitions := len(topicMetadata.Partitions)
+	desiredPartitions := int(spec.Partitions)
+
+	if desiredPartitions > currentPartitions {
+		setupLog.Info("increasing partitions",
+			"name", name,
+			"from", currentPartitions,
+			"to", desiredPartitions,
+		)
+
+		_, err := k.k.CreatePartitions(ctx, []ckafka.PartitionsSpecification{
+			{
+				Topic:      name,
+				IncreaseTo: desiredPartitions,
+			},
+		})
+
+		if err != nil {
+			setupLog.Error(err, "failed to increase partitions", "name", name)
+			return err
+		}
+	}
+
+	// =========================
+	// 3. REPLICATION FACTOR
+	// =========================
+	if spec.ReplicationFactor > 0 {
+		setupLog.Info("replication factor change is not supported automatically",
+			"name", name,
+			"desired", spec.ReplicationFactor,
+		)
+	}
+
 	return nil
 }
 

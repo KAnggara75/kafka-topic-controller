@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -12,6 +11,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	kafkav1 "github.com/KAnggara75/kafka-topic-controller/api/v1"
+	"github.com/KAnggara75/kafka-topic-controller/kafka"
 )
 
 type MockKafkaClient struct {
@@ -52,7 +52,7 @@ func TestKafkaTopicReconciler_Reconcile_Create(t *testing.T) {
 	created := false
 	mockKafka := &MockKafkaClient{
 		GetTopicFn: func(name string) (any, error) {
-			return nil, errors.New("not found")
+			return nil, kafka.ErrNotFound
 		},
 		CreateTopicFn: func(name string, spec kafkav1.KafkaTopicSpec) error {
 			created = true

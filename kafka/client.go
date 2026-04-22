@@ -10,9 +10,8 @@ import (
 )
 
 var (
-	setupLog              = ctrl.Log.WithName("kafka-client")
-	ErrNotFound           = errors.New("topic not found")
-	errUnknownTopicOrPart = errors.New("Broker: Unknown topic or partition")
+	setupLog    = ctrl.Log.WithName("kafka-client")
+	ErrNotFound = errors.New("topic not found")
 )
 
 type KafkaClient interface {

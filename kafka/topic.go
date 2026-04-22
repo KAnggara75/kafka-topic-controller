@@ -5,7 +5,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	ckafka "github.com/confluentinc/confluent-kafka-go/v2/kafka"
 
 	kafkav1 "github.com/KAnggara75/kafka-topic-controller/api/v1"
@@ -95,14 +94,14 @@ func (k *KafkaAdminClient) CreateTopic(name string, spec kafkav1.KafkaTopicSpec)
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
-	topicSpec := kafka.TopicSpecification{
+	topicSpec := ckafka.TopicSpecification{
 		Topic:             name,
 		NumPartitions:     int(spec.Partitions),
 		ReplicationFactor: int(spec.ReplicationFactor),
 		Config:            spec.Config,
 	}
 
-	results, err := k.k.CreateTopics(ctx, []kafka.TopicSpecification{topicSpec})
+	results, err := k.k.CreateTopics(ctx, []ckafka.TopicSpecification{topicSpec})
 	if err != nil {
 		setupLog.Error(err, "failed to create topic")
 		return err
@@ -115,9 +114,9 @@ func (k *KafkaAdminClient) CreateTopic(name string, spec kafkav1.KafkaTopicSpec)
 	res := results[0]
 
 	// handle result error
-	if res.Error.Code() != kafka.ErrNoError {
+	if res.Error.Code() != ckafka.ErrNoError {
 		// idempotent: topic sudah ada
-		if res.Error.Code() == kafka.ErrTopicAlreadyExists {
+		if res.Error.Code() == ckafka.ErrTopicAlreadyExists {
 			setupLog.Info("topic already exists", "name", name)
 			return nil
 		}

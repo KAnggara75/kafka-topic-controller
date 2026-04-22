@@ -25,18 +25,18 @@ func TestKafkaAdminClient_Methods(t *testing.T) {
 	client := &KafkaAdminClient{k: nil}
 
 	_, err := client.GetTopic("test")
-	if err != ErrNotFound {
-		t.Errorf("expected errNotFound, got %v", err)
+	if err == nil || err.Error() != "kafka client not initialized" {
+		t.Errorf("expected 'kafka client not initialized', got %v", err)
 	}
 
 	err = client.CreateTopic("test", kafkav1.KafkaTopicSpec{})
-	if err != nil {
-		t.Errorf("expected nil error, got %v", err)
+	if err == nil || err.Error() != "kafka client not initialized" {
+		t.Errorf("expected 'kafka client not initialized', got %v", err)
 	}
 
 	err = client.UpdateTopic("test", kafkav1.KafkaTopicSpec{})
-	if err != nil {
-		t.Errorf("expected nil error, got %v", err)
+	if err == nil || err.Error() != "kafka client not initialized" {
+		t.Errorf("expected 'kafka client not initialized', got %v", err)
 	}
 
 	needsUpdate := client.NeedsUpdate(nil, kafkav1.KafkaTopicSpec{})

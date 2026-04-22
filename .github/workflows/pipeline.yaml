@@ -3,28 +3,24 @@ name: CI/CD Pipeline
 on:
   push:
     branches: ["main"]
+    paths:
+      - '**.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'Dockerfile'
+      - '.github/workflows/pipeline.yaml'
+  pull_request:
+    branches: ["main"]
+    paths:
+      - '**.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'Dockerfile'
+      - '.github/workflows/pipeline.yaml'
 
 jobs:
-  changes:
-    runs-on: ubuntu-24.04
-    outputs:
-      src: ${{ steps.filter.outputs.src }}
-    steps:
-      - uses: actions/checkout@v6.0.2
-      - uses: dorny/paths-filter@v4.0.1
-        id: filter
-        with:
-          filters: |
-            src:
-              - '**.go'
-              - 'go.mod'
-              - 'go.sum'
-              - 'Dockerfile'
-              - '.github/workflows/pipeline.yaml'
-
   unit_test:
     name: Unit Tests & Coverage
-    if: needs.changes.outputs.src == 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6.0.2
@@ -58,7 +54,6 @@ jobs:
   security_scan:
     name: Go Security Scan
     runs-on: ubuntu-24.04
-    if: needs.changes.outputs.src == 'true'
     steps:
       - uses: actions/checkout@v6.0.2
 
@@ -85,8 +80,8 @@ jobs:
 
   docker_build_push:
     name: Build and Push Docker Image
-    needs: [security_scan, unit_test, changes]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.changes.outputs.src == 'true'
+    needs: [security_scan, unit_test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     permissions:
       contents: read

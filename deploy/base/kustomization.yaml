@@ -8,8 +8,8 @@ commonLabels:
 
 resources:
   # - namespace.yaml
-  - crd.yaml
-  - sa.yaml
-  - rbac-role.yaml
-  - rbac-role-binding.yaml
+  # - crd.yaml
+  # - sa.yaml
+  # - rbac-role.yaml
+  # - rbac-role-binding.yaml
   - deployment.yaml

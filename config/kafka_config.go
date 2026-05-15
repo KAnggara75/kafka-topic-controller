@@ -19,8 +19,16 @@ var (
 )
 
 func getCertName(certURL string) string {
-	// Simple hash or just replace special chars to get a unique filename
-	return strings.NewReplacer(":", "_", "/", "_", ".", "_").Replace(certURL) + ".cert"
+	u, err := url.Parse(certURL)
+	if err != nil {
+		return "kafka.cert"
+	}
+	base := filepath.Base(u.Path)
+	if base == "." || base == "/" {
+		return "kafka.cert"
+	}
+	ext := filepath.Ext(base)
+	return strings.TrimSuffix(base, ext) + ".cert"
 }
 
 func ensureCert(certURL string) string {

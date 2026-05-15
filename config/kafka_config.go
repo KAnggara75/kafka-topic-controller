@@ -33,7 +33,7 @@ func getCertName(certURL string) string {
 
 	// Add a short hash of the URL to ensure uniqueness and re-download on URL change
 	h := fnv.New32a()
-	h.Write([]byte(certURL))
+	_, _ = h.Write([]byte(certURL))
 	hash := fmt.Sprintf("%x", h.Sum32())
 
 	return fmt.Sprintf("%s-%s.cert", name, hash)

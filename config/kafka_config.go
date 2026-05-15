@@ -75,14 +75,30 @@ func ensureCert(certURL string) string {
 func GetBaseKafkaConfig(clusterUrl string) *ckafka.ConfigMap {
 	// Helper to get config with fallback to global kafka.*
 	getConfig := func(key string) string {
-		// Key in viper is dot-separated. ClusterUrl might have dots.
-		// We use a specific structure: kafka.clusters."url".key
-		clusterKey := "kafka.clusters.\"" + clusterUrl + "\"." + key
-		val := viper.GetString(clusterKey)
-		if val == "" {
-			val = viper.GetString("kafka." + key)
+		// Manually look up in kafka.clusters map to handle dots in clusterUrl
+		clusters := viper.GetStringMap("kafka.clusters")
+		if clusters != nil {
+			if clusterCfg, ok := clusters[clusterUrl].(map[string]any); ok {
+				// Search for the key in the cluster-specific map.
+				// The key might be nested (e.g., "ssl.ca.location")
+				parts := strings.Split(key, ".")
+				var current any = clusterCfg
+				for _, part := range parts {
+					if m, ok := current.(map[string]any); ok {
+						current = m[part]
+					} else {
+						current = nil
+						break
+					}
+				}
+				if val, ok := current.(string); ok && val != "" {
+					return val
+				}
+			}
 		}
-		return val
+
+		// Fallback to global kafka.<key>
+		return viper.GetString("kafka." + key)
 	}
 
 	certLocation := getConfig("ssl.ca.location")

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -66,10 +67,17 @@ func ensureCert(certURL string) string {
 func GetBaseKafkaConfig(clusterUrl string) *ckafka.ConfigMap {
 	// Helper to get config with fallback to global kafka.*
 	getConfig := func(key string) string {
-		// Key in viper is dot-separated. ClusterUrl might have dots.
-		// We use a specific structure: kafka.clusters."url".key
+		// Try full clusterUrl first
 		clusterKey := "kafka.clusters.\"" + clusterUrl + "\"." + key
 		val := viper.GetString(clusterKey)
+		if val == "" {
+			// Try without port
+			hostOnly := strings.Split(clusterUrl, ":")[0]
+			if hostOnly != clusterUrl {
+				clusterKey = "kafka.clusters.\"" + hostOnly + "\"." + key
+				val = viper.GetString(clusterKey)
+			}
+		}
 		if val == "" {
 			val = viper.GetString("kafka." + key)
 		}
@@ -99,7 +107,10 @@ func GetBaseKafkaConfig(clusterUrl string) *ckafka.ConfigMap {
 	}
 
 	if certLocation != "" {
-		_ = configMap.SetKey("ssl.ca.location", certLocation)
+		fmt.Printf("[DEBUG] Using SSL CA location for %s: %s\n", clusterUrl, certLocation)
+		(*configMap)["ssl.ca.location"] = certLocation
+	} else {
+		fmt.Printf("[DEBUG] No SSL CA location found for %s, using system defaults\n", clusterUrl)
 	}
 
 	return configMap

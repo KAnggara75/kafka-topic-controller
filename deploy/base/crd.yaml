@@ -35,7 +35,7 @@ spec:
           spec:
             description: KafkaTopicSpec defines the desired state of KafkaTopic
             properties:
-              clusterUrl:
+              cluster:
                 type: string
               config:
                 additionalProperties:
@@ -48,7 +48,7 @@ spec:
                 format: int32
                 type: integer
             required:
-            - clusterUrl
+            - cluster
             - partitions
             - replicationFactor
             type: object

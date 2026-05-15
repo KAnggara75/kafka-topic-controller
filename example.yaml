@@ -4,7 +4,7 @@ metadata:
   name: example-topic
   namespace: kafka
 spec:
-  clusterUrl: "localhost:9092"
+  cluster: "kafka-dev" # ClusterName
   partitions: 1
   replicationFactor: 1
   config:

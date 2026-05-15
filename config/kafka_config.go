@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"hash/fnv"
 	"io"
 	"net/http"
 	"net/url"
@@ -25,10 +26,17 @@ func getCertName(certURL string) string {
 	}
 	base := filepath.Base(u.Path)
 	if base == "." || base == "/" {
-		return "kafka.cert"
+		base = "kafka"
 	}
 	ext := filepath.Ext(base)
-	return strings.TrimSuffix(base, ext) + ".cert"
+	name := strings.TrimSuffix(base, ext)
+
+	// Add a short hash of the URL to ensure uniqueness and re-download on URL change
+	h := fnv.New32a()
+	h.Write([]byte(certURL))
+	hash := fmt.Sprintf("%x", h.Sum32())
+
+	return fmt.Sprintf("%s-%s.cert", name, hash)
 }
 
 func ensureCert(certURL string) string {
@@ -72,40 +80,23 @@ func ensureCert(certURL string) string {
 	return localPath
 }
 
-func GetBaseKafkaConfig(clusterUrl string) *ckafka.ConfigMap {
+func GetBaseKafkaConfig(clusterName string) *ckafka.ConfigMap {
 	// Helper to get config with fallback to global kafka.*
 	getConfig := func(key string) string {
-		// Manually look up in kafka.clusters map to handle dots in clusterUrl
-		clusters := viper.GetStringMap("kafka.clusters")
-		if clusters != nil {
-			// Debug: print available clusters
-			fmt.Printf("[DEBUG] Available clusters in config: ")
-			for k := range clusters {
-				fmt.Printf("%s, ", k)
-			}
-			fmt.Println()
-
-			if clusterCfg, ok := clusters[clusterUrl].(map[string]any); ok {
-				// Search for the key in the cluster-specific map.
-				// The key might be nested (e.g., "ssl.ca.location")
-				parts := strings.Split(key, ".")
-				var current any = clusterCfg
-				for _, part := range parts {
-					if m, ok := current.(map[string]any); ok {
-						current = m[part]
-					} else {
-						current = nil
-						break
-					}
-				}
-				if val, ok := current.(string); ok && val != "" {
-					return val
-				}
-			}
+		// 1. Try kafka.<clusterName>.<key>
+		fullPath := fmt.Sprintf("kafka.%s.%s", clusterName, key)
+		if val := viper.GetString(fullPath); val != "" {
+			return val
 		}
 
-		// Fallback to global kafka.<key>
+		// 2. Fallback to global kafka.<key>
 		return viper.GetString("kafka." + key)
+	}
+
+	bootstrapServers := getConfig("bootstrap.servers")
+	if bootstrapServers == "" {
+		// Fallback to using clusterName as bootstrap server if not defined in config
+		bootstrapServers = clusterName
 	}
 
 	certLocation := getConfig("ssl.ca.location")
@@ -123,7 +114,7 @@ func GetBaseKafkaConfig(clusterUrl string) *ckafka.ConfigMap {
 	}
 
 	configMap := &ckafka.ConfigMap{
-		"bootstrap.servers": clusterUrl,
+		"bootstrap.servers": bootstrapServers,
 		"security.protocol": getConfig("security.protocol"),
 		"sasl.mechanism":    getConfig("sasl.mechanism"),
 		"sasl.username":     getConfig("sasl.username"),
@@ -131,10 +122,10 @@ func GetBaseKafkaConfig(clusterUrl string) *ckafka.ConfigMap {
 	}
 
 	if certLocation != "" {
-		fmt.Printf("[DEBUG] Using SSL CA location for %s: %s\n", clusterUrl, certLocation)
+		fmt.Printf("[DEBUG] Using SSL CA location for %s: %s\n", clusterName, certLocation)
 		(*configMap)["ssl.ca.location"] = certLocation
 	} else {
-		fmt.Printf("[DEBUG] No SSL CA location found for %s, using system defaults\n", clusterUrl)
+		fmt.Printf("[DEBUG] No SSL CA location found for %s, using system defaults\n", clusterName)
 	}
 
 	return configMap

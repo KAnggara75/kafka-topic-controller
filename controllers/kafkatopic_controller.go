@@ -60,9 +60,9 @@ func (r *KafkaTopicReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{RequeueAfter: time.Second * 10}, client.IgnoreNotFound(err)
 	}
 
-	kafkaClient := r.getKafkaClient(topic.Spec.ClusterUrl)
+	kafkaClient := r.getKafkaClient(topic.Spec.Cluster)
 	if kafkaClient == nil {
-		r.Log.Error(nil, "failed to get kafka client for cluster", "clusterUrl", topic.Spec.ClusterUrl)
+		r.Log.Error(nil, "failed to get kafka client for cluster", "cluster", topic.Spec.Cluster)
 		return ctrl.Result{RequeueAfter: time.Minute}, nil
 	}
 

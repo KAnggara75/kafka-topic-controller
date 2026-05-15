@@ -42,7 +42,7 @@ func TestKafkaTopicReconciler_Reconcile_Create(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: kafkav1.KafkaTopicSpec{
-			ClusterUrl:        "localhost:9092",
+			Cluster:           "localhost:9092",
 			Partitions:        3,
 			ReplicationFactor: 1,
 		},
@@ -96,7 +96,7 @@ func TestKafkaTopicReconciler_Reconcile_Update(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: kafkav1.KafkaTopicSpec{
-			ClusterUrl:        "localhost:9092",
+			Cluster:           "localhost:9092",
 			Partitions:        3,
 			ReplicationFactor: 1,
 		},

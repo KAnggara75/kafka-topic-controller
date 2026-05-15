@@ -9,7 +9,7 @@ import (
 
 type KafkaTopicSpec struct {
 	// +kubebuilder:validation:Required
-	ClusterUrl        string            `json:"clusterUrl"`
+	Cluster           string            `json:"cluster"`
 	Partitions        int32             `json:"partitions"`
 	ReplicationFactor int32             `json:"replicationFactor"`
 	Config            map[string]string `json:"config,omitempty"`

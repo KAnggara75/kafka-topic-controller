@@ -14,86 +14,93 @@ import (
 )
 
 var (
-	once          sync.Once
-	localCertPath string
+	certCache sync.Map // map[string]string: URL -> local path
 )
 
-func downloadCertOnce(certURL string) string {
-	once.Do(func() {
-		const (
-			dir      = "/tmp/kafka"
-			certName = "kafka.cert"
-		)
-
-		if err := os.MkdirAll(dir, 0750); err != nil {
-			panic("Failed to create dir for Kafka cert: " + err.Error())
-		}
-
-		// Use os.Root to scope all file operations under dir,
-		// preventing any directory-traversal (CWE-22 / G304).
-		root, err := os.OpenRoot(dir)
-		if err != nil {
-			panic("Failed to open Kafka cert dir: " + err.Error())
-		}
-		defer func() {
-			if err := root.Close(); err != nil {
-				panic("Failed to close Kafka cert root: " + err.Error())
-			}
-		}()
-
-		// Absolute path used only for passing to the Kafka client later.
-		localCertPath = filepath.Join(dir, certName)
-
-		// Skip download if the file is already present.
-		if _, err := root.Stat(certName); os.IsNotExist(err) {
-			resp, err := http.Get(certURL) //#nosec G107 -- URL is sourced from trusted application config, not user input
-			if err != nil {
-				panic("Failed to download Kafka cert: " + err.Error())
-			}
-			defer func(Body io.ReadCloser) {
-				if err := Body.Close(); err != nil {
-					panic("Failed to close Kafka cert response body: " + err.Error())
-				}
-			}(resp.Body)
-
-			// root.Create is scoped to dir — no traversal possible.
-			out, err := root.Create(certName)
-			if err != nil {
-				panic("Failed to create Kafka cert file: " + err.Error())
-			}
-			defer func(out *os.File) {
-				if err := out.Close(); err != nil {
-					panic("Failed to close Kafka cert file: " + err.Error())
-				}
-			}(out)
-
-			if _, err := io.Copy(out, resp.Body); err != nil {
-				panic("Failed to write Kafka cert file: " + err.Error())
-			}
-		}
-	})
-	return localCertPath
+func getCertName(certURL string) string {
+	// Simple hash or just replace special chars to get a unique filename
+	return strings.NewReplacer(":", "_", "/", "_", ".", "_").Replace(certURL) + ".cert"
 }
 
-func GetBaseKafkaConfig() *ckafka.ConfigMap {
-	certLocation := viper.GetString("kafka.ssl.ca.location")
+func ensureCert(certURL string) string {
+	if path, ok := certCache.Load(certURL); ok {
+		return path.(string)
+	}
 
-	// cek apakah certLocation adalah URL
-	if u, err := url.Parse(certLocation); err == nil && (strings.HasPrefix(u.Scheme, "http")) {
-		certLocation = downloadCertOnce(certLocation)
-	} else {
-		// pastikan file ada
-		if _, err := os.Stat(certLocation); os.IsNotExist(err) {
-			panic("Kafka cert file not found: " + certLocation)
+	const dir = "/tmp/kafka"
+	certName := getCertName(certURL)
+	localPath := filepath.Join(dir, certName)
+
+	if err := os.MkdirAll(dir, 0750); err != nil {
+		panic("Failed to create dir for Kafka cert: " + err.Error())
+	}
+
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		panic("Failed to open Kafka cert dir: " + err.Error())
+	}
+	defer root.Close()
+
+	if _, err := root.Stat(certName); os.IsNotExist(err) {
+		resp, err := http.Get(certURL) //#nosec G107
+		if err != nil {
+			panic("Failed to download Kafka cert: " + err.Error())
+		}
+		defer resp.Body.Close()
+
+		out, err := root.Create(certName)
+		if err != nil {
+			panic("Failed to create Kafka cert file: " + err.Error())
+		}
+		defer out.Close()
+
+		if _, err := io.Copy(out, resp.Body); err != nil {
+			panic("Failed to write Kafka cert file: " + err.Error())
 		}
 	}
 
-	return &ckafka.ConfigMap{
-		"bootstrap.servers": viper.GetString("kafka.bootstrap.servers"),
-		"security.protocol": viper.GetString("kafka.security.protocol"),
-		"ssl.ca.location":   certLocation,
-		"sasl.mechanism":    viper.GetString("kafka.sasl.mechanism"),
-		"sasl.username":     viper.GetString("kafka.sasl.username"),
-		"sasl.password":     viper.GetString("kafka.sasl.password"),
+	certCache.Store(certURL, localPath)
+	return localPath
+}
+
+func GetBaseKafkaConfig(clusterUrl string) *ckafka.ConfigMap {
+	// Helper to get config with fallback to global kafka.*
+	getConfig := func(key string) string {
+		// Key in viper is dot-separated. ClusterUrl might have dots.
+		// We use a specific structure: kafka.clusters."url".key
+		clusterKey := "kafka.clusters.\"" + clusterUrl + "\"." + key
+		val := viper.GetString(clusterKey)
+		if val == "" {
+			val = viper.GetString("kafka." + key)
+		}
+		return val
 	}
+
+	certLocation := getConfig("ssl.ca.location")
+
+	if certLocation != "" {
+		// cek apakah certLocation adalah URL
+		if u, err := url.Parse(certLocation); err == nil && (strings.HasPrefix(u.Scheme, "http")) {
+			certLocation = ensureCert(certLocation)
+		} else {
+			// pastikan file ada
+			if _, err := os.Stat(certLocation); os.IsNotExist(err) {
+				panic("Kafka cert file not found: " + certLocation)
+			}
+		}
+	}
+
+	configMap := &ckafka.ConfigMap{
+		"bootstrap.servers": clusterUrl,
+		"security.protocol": getConfig("security.protocol"),
+		"sasl.mechanism":    getConfig("sasl.mechanism"),
+		"sasl.username":     getConfig("sasl.username"),
+		"sasl.password":     getConfig("sasl.password"),
+	}
+
+	if certLocation != "" {
+		_ = configMap.SetKey("ssl.ca.location", certLocation)
+	}
+
+	return configMap
 }

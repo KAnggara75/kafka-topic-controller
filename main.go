@@ -14,9 +14,7 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	kafkav1 "github.com/KAnggara75/kafka-topic-controller/api/v1"
-	"github.com/KAnggara75/kafka-topic-controller/config"
 	"github.com/KAnggara75/kafka-topic-controller/controllers"
-	"github.com/KAnggara75/kafka-topic-controller/kafka"
 )
 
 var (
@@ -57,7 +55,7 @@ func main() {
 	reconciler := &controllers.KafkaTopicReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
-		Kafka:  kafka.NewKafkaAdminClient(config.GetBaseKafkaConfig()),
+		Log:    ctrl.Log.WithName("controllers").WithName("KafkaTopic"),
 	}
 
 	if err = reconciler.SetupWithManager(mgr); err != nil {

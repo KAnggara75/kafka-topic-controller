@@ -42,6 +42,7 @@ func TestKafkaTopicReconciler_Reconcile_Create(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: kafkav1.KafkaTopicSpec{
+			ClusterUrl:        "localhost:9092",
 			Partitions:        3,
 			ReplicationFactor: 1,
 		},
@@ -63,7 +64,9 @@ func TestKafkaTopicReconciler_Reconcile_Create(t *testing.T) {
 	r := &KafkaTopicReconciler{
 		Client: cl,
 		Scheme: scheme,
-		Kafka:  mockKafka,
+		clients: map[string]kafka.KafkaClient{
+			"localhost:9092": mockKafka,
+		},
 	}
 
 	req := ctrl.Request{
@@ -93,6 +96,7 @@ func TestKafkaTopicReconciler_Reconcile_Update(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: kafkav1.KafkaTopicSpec{
+			ClusterUrl:        "localhost:9092",
 			Partitions:        3,
 			ReplicationFactor: 1,
 		},
@@ -117,7 +121,9 @@ func TestKafkaTopicReconciler_Reconcile_Update(t *testing.T) {
 	r := &KafkaTopicReconciler{
 		Client: cl,
 		Scheme: scheme,
-		Kafka:  mockKafka,
+		clients: map[string]kafka.KafkaClient{
+			"localhost:9092": mockKafka,
+		},
 	}
 
 	req := ctrl.Request{

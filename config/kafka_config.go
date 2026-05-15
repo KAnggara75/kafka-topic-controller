@@ -78,6 +78,13 @@ func GetBaseKafkaConfig(clusterUrl string) *ckafka.ConfigMap {
 		// Manually look up in kafka.clusters map to handle dots in clusterUrl
 		clusters := viper.GetStringMap("kafka.clusters")
 		if clusters != nil {
+			// Debug: print available clusters
+			fmt.Printf("[DEBUG] Available clusters in config: ")
+			for k := range clusters {
+				fmt.Printf("%s, ", k)
+			}
+			fmt.Println()
+
 			if clusterCfg, ok := clusters[clusterUrl].(map[string]any); ok {
 				// Search for the key in the cluster-specific map.
 				// The key might be nested (e.g., "ssl.ca.location")

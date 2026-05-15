@@ -8,9 +8,9 @@ Kubernetes Controller untuk mengelola topik Kafka secara deklaratif melalui Cust
 
 ## Fitur
 
+- **Multi-Cluster**: Kelola topik di berbagai cluster Kafka yang berbeda dalam satu controller.
 - **Deklaratif**: Definisikan topik Kafka dalam format YAML.
 - **Sinkronisasi Otomatis**: Menjamin *actual state* di Kafka sesuai dengan *desired state* di Kubernetes.
-- **Idempotent**: Menggunakan `topicctl` untuk melakukan perubahan yang aman dan efisien.
 - **Manajemen Siklus Hidup**: Mendukung pembuatan, pembaruan konfigurasi/partisi, dan penghapusan topik.
 
 ## Persyaratan
@@ -42,38 +42,53 @@ export KAFKA_BOOTSTRAP_SERVERS="localhost:9092"
 go run main.go
 ```
 
-### Konfigurasi Kafka
+Controller ini menggunakan `viper` untuk membaca konfigurasi. Anda dapat menggunakan environment variabel dengan prefix `KAFKA_` atau file konfigurasi.
 
-Controller ini menggunakan variabel lingkungan berikut untuk koneksi ke Kafka:
+### Konfigurasi Global (Default)
+Digunakan sebagai fallback jika cluster spesifik tidak didefinisikan.
 
 | Nama Variabel | Deskripsi |
 |---------------|-----------|
-| `KAFKA_BOOTSTRAP_SERVERS` | Alamat broker Kafka (misal: `kafka.example.com:9092`). |
-| `SASL_MECHANISM` | Mekanisme SASL (`PLAIN`, `SCRAM-SHA-256`, dll). |
-| `SECURITY_PROTOCOL` | Set ke `SASL_SSL` untuk mengaktifkan TLS secara otomatis. |
-| `SASL_JAAS_CONFIG` | String JAAS untuk autentikasi. |
-| `SSL_TRUSTSTORE_LOCATION` | Lokasi file `.jks` atau PEM untuk verifikasi TLS. |
-| `SSL_TRUSTSTORE_PASSWORD` | Password untuk file JKS. |
+| `KAFKA_BOOTSTRAP_SERVERS` | Alamat broker Kafka default. |
+| `KAFKA_SECURITY_PROTOCOL` | Protokol keamanan (`PLAINTEXT`, `SASL_SSL`, dll). |
+| `KAFKA_SASL_MECHANISM` | Mekanisme SASL (`PLAIN`, `SCRAM-SHA-256`, dll). |
+| `KAFKA_SASL_USERNAME` | Username untuk SASL. |
+| `KAFKA_SASL_PASSWORD` | Password untuk SASL. |
+| `KAFKA_SSL_CA_LOCATION` | Lokasi sertifikat CA (bisa berupa URL atau path file). |
 
-> **Catatan**: Jika `SSL_TRUSTSTORE_LOCATION` menggunakan file `.jks`, controller akan secara otomatis melakukan konversi ke format PEM di memori.
+### Konfigurasi Multi-Cluster
+Untuk mendukung multi-cluster, gunakan struktur berikut (contoh untuk cluster `localhost:9092`):
+- `KAFKA_CLUSTERS_"localhost:9092"_SASL_USERNAME="user1"`
+- `KAFKA_CLUSTERS_"localhost:9092"_SASL_PASSWORD="pass"`
+
+Atau dalam file `config.yaml`:
+```yaml
+kafka:
+  clusters:
+    "localhost:9092":
+      sasl:
+        username: "user1"
+        password: "pass"
+      security:
+        protocol: "SASL_SSL"
+```
 
 ## Cara Penggunaan
 
 Buat file manifest `kafkatopic.yaml`:
 
 ```yaml
-apiVersion: kafka.kanggara.my.id/v1alpha1
+apiVersion: kafka.kanggara.my.id/v1
 kind: KafkaTopic
 metadata:
   name: example-topic
 spec:
+  clusterUrl: "localhost:9092"
   partitions: 3
   replicationFactor: 1
-  retentionMinutes: 1440
-  settings:
+  config:
     cleanup.policy: delete
-    min.insync.replicas: "2"
-    retention.bytes: "1073741824"
+    retention.ms: "604800000"
 ```
 
 Aplikasikan ke Kubernetes:
@@ -85,10 +100,10 @@ kubectl apply -f kafkatopic.yaml
 
 | Field | Tipe | Deskripsi |
 |-------|------|-----------|
+| `clusterUrl` | string | Alamat broker Kafka tujuan (misal: `localhost:9092`). |
 | `partitions` | int | Jumlah partisi topik. |
 | `replicationFactor` | int | Faktor replikasi topik. |
-| `retentionMinutes` | int | Waktu retensi dalam menit. |
-| `settings` | map[string]string | Konfigurasi tambahan Kafka (misal: `cleanup.policy`). |
+| `config` | map[string]string | Konfigurasi tambahan Kafka (misal: `cleanup.policy`). |
 
 ## Pengembangan
 

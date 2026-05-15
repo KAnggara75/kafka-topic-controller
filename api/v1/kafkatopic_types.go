@@ -1,11 +1,15 @@
 package v1
 
 import (
+	"maps"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
 type KafkaTopicSpec struct {
+	// +kubebuilder:validation:Required
+	ClusterUrl        string            `json:"clusterUrl"`
 	Partitions        int32             `json:"partitions"`
 	ReplicationFactor int32             `json:"replicationFactor"`
 	Config            map[string]string `json:"config,omitempty"`
@@ -34,9 +38,7 @@ func (in *KafkaTopic) DeepCopyObject() runtime.Object {
 	// deep copy map
 	if in.Spec.Config != nil {
 		out.Spec.Config = make(map[string]string, len(in.Spec.Config))
-		for k, v := range in.Spec.Config {
-			out.Spec.Config[k] = v
-		}
+		maps.Copy(out.Spec.Config, in.Spec.Config)
 	}
 
 	return out
